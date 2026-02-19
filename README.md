@@ -1,6 +1,8 @@
 # <img src="BrowserSmoothScroll/favicon/Gemini_Generated_Image_raf4s0raf4s0raf4.png" width="48" height="48" align="center"/> Browser Smooth Scroll
 
-**EXACTLY THE SAME AS CURRENTLY AVAILABLE PAYMENT APPS (BUT FREE).** A lightweight utility for buttery smooth scrolling in web browsers on Windows.
+**EXACTLY THE SAME AS CURRENTLY AVAILABLE PAYMENT APPS (BUT FREE).** 
+
+- A lightweight utility for buttery smooth scrolling in web browsers on Windows.
 - Created on: 02/20/2026
 
 ## Requirements
@@ -10,6 +12,8 @@
 
 ## Installation & Usage
 
+> **Necessary**: Disable "Smooth Scrolling" in your browser (`chrome://flags/#smooth-scrolling` or `edge://flags/#smooth-scrolling`) to avoid double-smoothing.
+
 1. **Download** the latest `BrowserSmoothScroll_v1.0.zip` from the [Releases](https://github.com/kubi2811/SmoothScroll/releases) page.
 2. **Extract** the zip file.
 3. **Run** `BrowserSmoothScroll.exe`.
@@ -17,7 +21,7 @@
    - Right-click the tray icon to **Enable/Disable** or access **Settings**.
    - **Auto-Start on boot**: Enabled by default.
 
-> **Tip**: Disable "Smooth Scrolling" in your browser (`chrome://flags/#smooth-scrolling` or `edge://flags/#smooth-scrolling`) to avoid double-smoothing.
+
 
 ## Uninstall
 
