@@ -1,13 +1,15 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using Timer = System.Threading.Timer;
+using System.Threading;
 
 namespace BrowserSmoothScroll;
 
 internal sealed class SmoothScrollService : IDisposable
 {
     private static bool EnableCoastMotion => true;
-    private const int AnimationTickMs = 14;
+    private const int AnimationTickMs = 8;
     private const int MaxEmitPerTick = 420;
     private const uint HighResolutionTimerPeriodMs = 1;
     private static readonly UIntPtr InjectionSignature = unchecked((UIntPtr)0x42535353u);
@@ -16,7 +18,7 @@ internal sealed class SmoothScrollService : IDisposable
         string.Equals(Environment.GetEnvironmentVariable("BSS_ALLOW_TEST_INJECTED"), "1", StringComparison.Ordinal);
     private const int CoastStartDelayMs = 14;
     private const double CoastKickGain = 0.22;
-    private const double CoastDragPerSecond = 13.5;
+    private const double CoastDragPerSecond = 15.0;
     private const double CoastActiveDragPerSecond = 18.0;
     private const double CoastMaxVelocity = 3600.0;
     private const double CoastStopVelocity = 20.0;
@@ -34,13 +36,13 @@ internal sealed class SmoothScrollService : IDisposable
     private readonly BrowserProcessTracker _processTracker;
     private readonly ScrollDebugLogger _debugLogger;
     private readonly NativeMethods.LowLevelMouseProc _hookProc;
-    private readonly Timer _animationTimer;
+    private readonly ManualResetEventSlim _wakeEvent = new(false);
     private readonly object _stateLock = new();
     private readonly List<ScrollImpulse> _verticalImpulses = [];
     private readonly List<ScrollImpulse> _horizontalImpulses = [];
 
+    private Thread? _animationThread;
     private IntPtr _hookHandle;
-    private bool _timerActive;
     private bool _disposed;
     private double _verticalResidual;
     private double _horizontalResidual;
@@ -63,7 +65,6 @@ internal sealed class SmoothScrollService : IDisposable
     private int _lastHorizontalAccelerationDirection;
     private int _lastVerticalEmittedDelta;
     private int _lastHorizontalEmittedDelta;
-    private int _tickRunning;
     private int _debugTickCounter;
     private bool _highResolutionTimerEnabled;
 
@@ -76,7 +77,6 @@ internal sealed class SmoothScrollService : IDisposable
         _processTracker = processTracker;
         _debugLogger = debugLogger;
         _hookProc = HookCallback;
-        _animationTimer = new Timer(OnAnimationTick);
     }
 
     public void Start()
@@ -102,6 +102,14 @@ internal sealed class SmoothScrollService : IDisposable
         }
 
         _highResolutionTimerEnabled = NativeMethods.timeBeginPeriod(HighResolutionTimerPeriodMs) == 0;
+        
+        _animationThread = new Thread(AnimationLoop)
+        {
+            IsBackground = true,
+            Priority = ThreadPriority.AboveNormal,
+            Name = "BSS_AnimationLoop"
+        };
+        _animationThread.Start();
     }
 
     private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
@@ -125,6 +133,42 @@ internal sealed class SmoothScrollService : IDisposable
             return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
         }
 
+        // Check for injected events first to avoid loops and ensure we log benchmarks
+        // regardless of the target process.
+        var horizontalFromMessage = message == NativeMethods.WM_MOUSEHWHEEL;
+        var injected = (hookData.flags & NativeMethods.LLMHF_INJECTED) != 0;
+        var selfInjected = injected && hookData.dwExtraInfo == InjectionSignature;
+        var benchmarkInjected = AllowBenchmarkInjectedInput &&
+            injected &&
+            hookData.dwExtraInfo == BenchmarkInjectionSignature;
+
+        if (benchmarkInjected)
+        {
+            injected = false;
+            selfInjected = false;
+        }
+
+        if (settings.DebugMode)
+        {
+            _debugLogger.LogHookWheel(horizontalFromMessage, rawDelta, injected, selfInjected, 0, "recv");
+        }
+
+        if (injected)
+        {
+            if (settings.DebugMode)
+            {
+                _debugLogger.LogHookWheel(
+                    horizontalFromMessage,
+                    rawDelta,
+                    injected: true,
+                    selfInjected,
+                    0,
+                    selfInjected ? "pass-self-injected" : "pass-external-injected");
+            }
+
+            return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+        }
+
         var foregroundWindow = NativeMethods.GetForegroundWindow();
         if (foregroundWindow == IntPtr.Zero)
         {
@@ -142,40 +186,6 @@ internal sealed class SmoothScrollService : IDisposable
             if (settings.DebugMode)
             {
                 _debugLogger.LogSkippedWheel("not-tracked-process", pid, rawDelta);
-            }
-
-            return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
-        }
-
-        var horizontalFromMessage = message == NativeMethods.WM_MOUSEHWHEEL;
-        var injected = (hookData.flags & NativeMethods.LLMHF_INJECTED) != 0;
-        var selfInjected = injected && hookData.dwExtraInfo == InjectionSignature;
-        var benchmarkInjected = AllowBenchmarkInjectedInput &&
-            injected &&
-            hookData.dwExtraInfo == BenchmarkInjectionSignature;
-
-        if (benchmarkInjected)
-        {
-            injected = false;
-            selfInjected = false;
-        }
-
-        if (settings.DebugMode)
-        {
-            _debugLogger.LogHookWheel(horizontalFromMessage, rawDelta, injected, selfInjected, pid, "recv");
-        }
-
-        if (injected)
-        {
-            if (settings.DebugMode)
-            {
-                _debugLogger.LogHookWheel(
-                    horizontalFromMessage,
-                    rawDelta,
-                    injected: true,
-                    selfInjected,
-                    pid,
-                    selfInjected ? "pass-self-injected" : "pass-external-injected");
             }
 
             return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
@@ -260,7 +270,7 @@ internal sealed class SmoothScrollService : IDisposable
             acceleratedTargetDelta,
             Stopwatch.GetTimestamp(),
             durationMs,
-            settings.AnimationEasing,
+            settings.AnimationEasing ? EasingFunction.EaseOut : EasingFunction.Linear,
             easingPower);
 
         var coastVelocityKick = (acceleratedTargetDelta / Math.Max(1.0, durationMs)) * 1000.0 * CoastKickGain;
@@ -308,13 +318,8 @@ internal sealed class SmoothScrollService : IDisposable
                     _verticalReleaseSeedPending = true;
                 }
             }
-
-            if (!_timerActive)
-            {
-                _animationTimer.Change(0, AnimationTickMs);
-                _timerActive = true;
-                _lastAnimationTimestamp = Stopwatch.GetTimestamp();
-            }
+            
+            _wakeEvent.Set();
         }
     }
 
@@ -432,146 +437,179 @@ internal sealed class SmoothScrollService : IDisposable
         return Math.Max(80, (int)Math.Round(scaled));
     }
 
-    private void OnAnimationTick(object? _)
+    private void AnimationLoop()
     {
-        if (Interlocked.Exchange(ref _tickRunning, 1) == 1)
-        {
-            return;
-        }
+        long targetTicks = 0;
+        long tickIntervalTicks = (long)(Stopwatch.Frequency * AnimationTickMs / 1000.0);
 
-        try
+        while (!_disposed)
         {
-            if (_disposed)
+            _wakeEvent.Wait();
+            if (_disposed) break;
+
+            var startTimestamp = Stopwatch.GetTimestamp();
+            if (targetTicks == 0 || startTimestamp > targetTicks + tickIntervalTicks)
             {
-                return;
+                targetTicks = startTimestamp;
             }
 
-            var now = Stopwatch.GetTimestamp();
-            var nowMs = Environment.TickCount64;
-            int verticalDeltaToSend;
-            int horizontalDeltaToSend;
-            int activeVerticalImpulses;
-            int activeHorizontalImpulses;
-            double residualVerticalSnapshot;
-            double residualHorizontalSnapshot;
+            // Execute the frame
+            var hasWork = ProcessFrame(startTimestamp);
 
-            lock (_stateLock)
+            if (!hasWork)
             {
-                var dtSec = ComputeDeltaSeconds(now);
-                _verticalResidual += ConsumeImpulseProgress(_verticalImpulses, now);
-                _horizontalResidual += ConsumeImpulseProgress(_horizontalImpulses, now);
-                var verticalHasActiveImpulse = _verticalImpulses.Count > 0;
-                var horizontalHasActiveImpulse = _horizontalImpulses.Count > 0;
-                if (EnableCoastMotion)
+                _wakeEvent.Reset();
+                targetTicks = 0;
+                continue;
+            }
+
+            // Calculate next target
+            targetTicks += tickIntervalTicks;
+            var currentTimestamp = Stopwatch.GetTimestamp();
+
+            // Busy wait if close, sleep otherwise
+            while (currentTimestamp < targetTicks)
+            {
+                var diffTicks = targetTicks - currentTimestamp;
+                var diffMs = (diffTicks * 1000) / Stopwatch.Frequency;
+                
+                if (diffMs > 1)
                 {
-                    ApplyCoastMotion(
-                        ref _verticalResidual,
-                        ref _verticalCoastVelocity,
-                        ref _verticalReleaseSeedPending,
-                        ref _verticalReleaseSeedRate,
-                        verticalHasActiveImpulse,
-                        _lastVerticalDirection,
-                        _lastVerticalInputMs,
-                        nowMs,
-                        dtSec);
-                    ApplyCoastMotion(
-                        ref _horizontalResidual,
-                        ref _horizontalCoastVelocity,
-                        ref _horizontalReleaseSeedPending,
-                        ref _horizontalReleaseSeedRate,
-                        horizontalHasActiveImpulse,
-                        _lastHorizontalDirection,
-                        _lastHorizontalInputMs,
-                        nowMs,
-                        dtSec);
+                    Thread.Sleep(1);
                 }
                 else
                 {
-                    _verticalCoastVelocity = 0;
-                    _horizontalCoastVelocity = 0;
-                    _verticalReleaseSeedRate = 0;
-                    _horizontalReleaseSeedRate = 0;
-                    _verticalReleaseSeedPending = false;
-                    _horizontalReleaseSeedPending = false;
+                    Thread.SpinWait(10);
                 }
 
-                verticalDeltaToSend = TakeIntegral(ref _verticalResidual);
-                horizontalDeltaToSend = TakeIntegral(ref _horizontalResidual);
-                ApplyPerTickCap(ref verticalDeltaToSend, ref _verticalResidual);
-                ApplyPerTickCap(ref horizontalDeltaToSend, ref _horizontalResidual);
-                ApplyDeltaSlewLimit(ref verticalDeltaToSend, ref _verticalResidual, ref _lastVerticalEmittedDelta);
-                ApplyDeltaSlewLimit(ref horizontalDeltaToSend, ref _horizontalResidual, ref _lastHorizontalEmittedDelta);
-                activeVerticalImpulses = _verticalImpulses.Count;
-                activeHorizontalImpulses = _horizontalImpulses.Count;
-                residualVerticalSnapshot = _verticalResidual;
-                residualHorizontalSnapshot = _horizontalResidual;
-
-                var hasPendingCoastWork =
-                    EnableCoastMotion &&
-                    (Math.Abs(_verticalCoastVelocity) >= CoastStopVelocity ||
-                     Math.Abs(_horizontalCoastVelocity) >= CoastStopVelocity);
-
-                var hasPendingWork =
-                    activeVerticalImpulses > 0 ||
-                    activeHorizontalImpulses > 0 ||
-                    hasPendingCoastWork ||
-                    Math.Abs(_verticalResidual) >= 1 ||
-                    Math.Abs(_horizontalResidual) >= 1;
-
-                if (!hasPendingWork && _timerActive)
-                {
-                    _animationTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                    _timerActive = false;
-                    _lastAnimationTimestamp = 0;
-                    _verticalCombo = 0;
-                    _horizontalCombo = 0;
-                    _lastVerticalAccelerationDirection = 0;
-                    _lastHorizontalAccelerationDirection = 0;
-                    _lastVerticalEmittedDelta = 0;
-                    _lastHorizontalEmittedDelta = 0;
-                }
+                currentTimestamp = Stopwatch.GetTimestamp();
             }
+        }
+    }
 
-            var debugMode = _settingsProvider().DebugMode;
-            if (!debugMode)
+    private bool ProcessFrame(long now)
+    {
+        var nowMs = Environment.TickCount64;
+        int verticalDeltaToSend;
+        int horizontalDeltaToSend;
+        int activeVerticalImpulses;
+        int activeHorizontalImpulses;
+        double residualVerticalSnapshot;
+        double residualHorizontalSnapshot;
+
+        lock (_stateLock)
+        {
+            var dtSec = ComputeDeltaSeconds(now);
+            _verticalResidual += ConsumeImpulseProgress(_verticalImpulses, now);
+            _horizontalResidual += ConsumeImpulseProgress(_horizontalImpulses, now);
+            var verticalHasActiveImpulse = _verticalImpulses.Count > 0;
+            var horizontalHasActiveImpulse = _horizontalImpulses.Count > 0;
+            if (EnableCoastMotion)
             {
-                _debugTickCounter = 0;
+                ApplyCoastMotion(
+                    ref _verticalResidual,
+                    ref _verticalCoastVelocity,
+                    ref _verticalReleaseSeedPending,
+                    ref _verticalReleaseSeedRate,
+                    verticalHasActiveImpulse,
+                    _lastVerticalDirection,
+                    _lastVerticalInputMs,
+                    nowMs,
+                    dtSec);
+                ApplyCoastMotion(
+                    ref _horizontalResidual,
+                    ref _horizontalCoastVelocity,
+                    ref _horizontalReleaseSeedPending,
+                    ref _horizontalReleaseSeedRate,
+                    horizontalHasActiveImpulse,
+                    _lastHorizontalDirection,
+                    _lastHorizontalInputMs,
+                    nowMs,
+                    dtSec);
             }
             else
             {
-                _debugTickCounter++;
-                var shouldLogTick =
-                    verticalDeltaToSend != 0 ||
-                    horizontalDeltaToSend != 0 ||
-                    ((activeVerticalImpulses > 0 || activeHorizontalImpulses > 0) &&
-                        (_debugTickCounter % DebugActiveTickLogInterval == 0));
-
-                if (shouldLogTick)
-                {
-                    _debugLogger.LogTick(
-                        verticalDeltaToSend,
-                        horizontalDeltaToSend,
-                        residualVerticalSnapshot,
-                        residualHorizontalSnapshot,
-                        activeVerticalImpulses,
-                        activeHorizontalImpulses);
-                }
+                _verticalCoastVelocity = 0;
+                _horizontalCoastVelocity = 0;
+                _verticalReleaseSeedRate = 0;
+                _horizontalReleaseSeedRate = 0;
+                _verticalReleaseSeedPending = false;
+                _horizontalReleaseSeedPending = false;
             }
 
-            if (verticalDeltaToSend != 0)
-            {
-                InjectWheelDelta(verticalDeltaToSend, horizontal: false);
-            }
+            verticalDeltaToSend = TakeIntegral(ref _verticalResidual);
+            horizontalDeltaToSend = TakeIntegral(ref _horizontalResidual);
+            ApplyPerTickCap(ref verticalDeltaToSend, ref _verticalResidual);
+            ApplyPerTickCap(ref horizontalDeltaToSend, ref _horizontalResidual);
+            ApplyDeltaSlewLimit(ref verticalDeltaToSend, ref _verticalResidual, ref _lastVerticalEmittedDelta);
+            ApplyDeltaSlewLimit(ref horizontalDeltaToSend, ref _horizontalResidual, ref _lastHorizontalEmittedDelta);
+            activeVerticalImpulses = _verticalImpulses.Count;
+            activeHorizontalImpulses = _horizontalImpulses.Count;
+            residualVerticalSnapshot = _verticalResidual;
+            residualHorizontalSnapshot = _horizontalResidual;
 
-            if (horizontalDeltaToSend != 0)
+            var hasPendingCoastWork =
+                EnableCoastMotion &&
+                (Math.Abs(_verticalCoastVelocity) >= CoastStopVelocity ||
+                 Math.Abs(_horizontalCoastVelocity) >= CoastStopVelocity);
+
+            var hasPendingWork =
+                activeVerticalImpulses > 0 ||
+                activeHorizontalImpulses > 0 ||
+                hasPendingCoastWork ||
+                Math.Abs(_verticalResidual) >= 1 ||
+                Math.Abs(_horizontalResidual) >= 1;
+
+            if (!hasPendingWork)
             {
-                InjectWheelDelta(horizontalDeltaToSend, horizontal: true);
+                _lastAnimationTimestamp = 0;
+                _verticalCombo = 0;
+                _horizontalCombo = 0;
+                _lastVerticalAccelerationDirection = 0;
+                _lastHorizontalAccelerationDirection = 0;
+                _lastVerticalEmittedDelta = 0;
+                _lastHorizontalEmittedDelta = 0;
+                return false;
             }
         }
-        finally
+
+        var debugMode = _settingsProvider().DebugMode;
+        if (!debugMode)
         {
-            Volatile.Write(ref _tickRunning, 0);
+            _debugTickCounter = 0;
         }
+        else
+        {
+            _debugTickCounter++;
+            var shouldLogTick =
+                verticalDeltaToSend != 0 ||
+                horizontalDeltaToSend != 0 ||
+                ((activeVerticalImpulses > 0 || activeHorizontalImpulses > 0) &&
+                    (_debugTickCounter % DebugActiveTickLogInterval == 0));
+
+            if (shouldLogTick)
+            {
+                _debugLogger.LogTick(
+                    verticalDeltaToSend,
+                    horizontalDeltaToSend,
+                    residualVerticalSnapshot,
+                    residualHorizontalSnapshot,
+                    activeVerticalImpulses,
+                    activeHorizontalImpulses);
+            }
+        }
+
+        if (verticalDeltaToSend != 0)
+        {
+            InjectWheelDelta(verticalDeltaToSend, horizontal: false);
+        }
+
+        if (horizontalDeltaToSend != 0)
+        {
+            InjectWheelDelta(horizontalDeltaToSend, horizontal: true);
+        }
+
+        return true;
     }
 
     private double ComputeDeltaSeconds(long nowTimestamp)
@@ -765,11 +803,10 @@ internal sealed class SmoothScrollService : IDisposable
         }
 
         _disposed = true;
-
+        _wakeEvent.Set(); // Wake up thread to exit
+        
         lock (_stateLock)
         {
-            _animationTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            _timerActive = false;
             _lastAnimationTimestamp = 0;
             _verticalCoastVelocity = 0;
             _horizontalCoastVelocity = 0;
@@ -794,34 +831,52 @@ internal sealed class SmoothScrollService : IDisposable
             _ = NativeMethods.timeEndPeriod(HighResolutionTimerPeriodMs);
             _highResolutionTimerEnabled = false;
         }
+        
+        _wakeEvent.Dispose();
+    }
 
-        _animationTimer.Dispose();
+    private enum EasingFunction
+    {
+        Linear,
+        EaseOut,
+        EaseIn,
+        EaseInOut
+    }
+
+    private record struct AccelerationMetrics(
+        double Factor,
+        int Combo,
+        long ElapsedMs,
+        double ComboRatio,
+        double CadenceRatio)
+    {
+        public static readonly AccelerationMetrics NoAcceleration = new(1.0, 0, 0, 0, 0);
     }
 
     private sealed class ScrollImpulse
     {
-        private readonly double _targetDelta;
-        private readonly long _startTimestamp;
-        private readonly int _durationMs;
-        private readonly bool _useEasing;
+        private readonly double _totalDelta;
+        private readonly long _creationTimestamp;
+        private readonly double _durationMs;
+        private readonly EasingFunction _easingFunction;
         private readonly double _easingPower;
-        private double _emitted;
+        private double _emittedDelta;
 
         public ScrollImpulse(
-            double targetDelta,
-            long startTimestamp,
+            double totalDelta,
+            long creationTimestamp,
             int durationMs,
-            bool useEasing,
+            EasingFunction easingFunction,
             double easingPower)
         {
-            _targetDelta = targetDelta;
-            _startTimestamp = startTimestamp;
-            _durationMs = Math.Max(1, durationMs);
-            _useEasing = useEasing;
+            _totalDelta = totalDelta;
+            _creationTimestamp = creationTimestamp;
+            _durationMs = durationMs;
+            _easingFunction = easingFunction;
             _easingPower = easingPower;
         }
 
-        public bool IsCompleted { get; private set; }
+        public bool IsCompleted => Math.Abs(_emittedDelta - _totalDelta) < 0.001;
 
         public double TakeIncrement(long now)
         {
@@ -830,63 +885,28 @@ internal sealed class SmoothScrollService : IDisposable
                 return 0;
             }
 
-            var elapsedMs = (now - _startTimestamp) * 1000.0 / Stopwatch.Frequency;
+            var elapsedMs = (now - _creationTimestamp) / (double)Stopwatch.Frequency * 1000.0;
             var progress = Math.Clamp(elapsedMs / _durationMs, 0.0, 1.0);
+            var easedProgress = ApplyEasing(progress, _easingFunction, _easingPower);
+            var targetEmitted = _totalDelta * easedProgress;
+            var increment = targetEmitted - _emittedDelta;
 
-            var easedProgress = _useEasing
-                ? ApplyEasing(progress, _easingPower)
-                : progress;
-
-            var nextTotal = _targetDelta * easedProgress;
-            var increment = nextTotal - _emitted;
-            _emitted = nextTotal;
-            IsCompleted = progress >= 1.0;
+            _emittedDelta = targetEmitted;
             return increment;
         }
 
-        private static double ApplyEasing(double progress, double ratio)
+        private static double ApplyEasing(double t, EasingFunction function, double power)
         {
-            // Ease-out power-1.5: starts at ~1.5x average velocity, decelerates smoothly.
-            // Unlike SmootherStep (starts at 0 velocity → produces sub-pixel head trickle
-            // that truncates to 0px → visible stepping), this curve emits meaningful pixels
-            // from tick 1, so the eye can track text during slow scroll.
-            // Power 1.5 = gentle start (not jarring like cubic) but immediate motion.
-            var easeOut = 1.0 - Math.Pow(1.0 - progress, 1.5);
-            var tailBias = Math.Clamp((ratio - 1.0) / 9.0, 0.0, 1.0);
-            var tailCurve = 1.0 - Math.Pow(1.0 - progress, 1.4 + (tailBias * 0.8));
-            return Lerp(easeOut, tailCurve, tailBias * 0.15);
+            return function switch
+            {
+                EasingFunction.Linear => t,
+                EasingFunction.EaseOut => 1.0 - Math.Pow(1.0 - t, power),
+                EasingFunction.EaseIn => Math.Pow(t, power),
+                EasingFunction.EaseInOut => t < 0.5
+                    ? 0.5 * Math.Pow(2 * t, power)
+                    : 1.0 - 0.5 * Math.Pow(2 * (1 - t), power),
+                _ => t
+            };
         }
-
-        private static double SmootherStep(double value)
-        {
-            // 6th-degree Hermite interpolant: f(0)=0, f(1)=1, f'(0)=f'(1)=0, f''(0)=f''(1)=0
-            return value * value * value * (value * ((value * 6.0) - 15.0) + 10.0);
-        }
-
-        private static double Lerp(double from, double to, double amount)
-        {
-            return from + ((to - from) * amount);
-        }
-    }
-
-    private readonly struct AccelerationMetrics(
-        double factor,
-        int combo,
-        long elapsedMs,
-        double comboRatio,
-        double cadenceRatio)
-    {
-        public static readonly AccelerationMetrics NoAcceleration = new(
-            factor: 1.0,
-            combo: 0,
-            elapsedMs: 0,
-            comboRatio: 0.0,
-            cadenceRatio: 0.0);
-
-        public double Factor { get; } = factor;
-        public int Combo { get; } = combo;
-        public long ElapsedMs { get; } = elapsedMs;
-        public double ComboRatio { get; } = comboRatio;
-        public double CadenceRatio { get; } = cadenceRatio;
     }
 }

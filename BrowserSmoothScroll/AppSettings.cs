@@ -7,10 +7,10 @@ internal sealed class AppSettings
     public bool Enabled { get; set; } = true;
     public bool AutoStartOnLogin { get; set; } = false;
     public bool EnableForAllAppsByDefault { get; set; } = false;
-    public int StepSize { get; set; } = 120;
-    public int AnimationTimeMs { get; set; } = 520;
+    public int StepSize { get; set; } = 95;
+    public int AnimationTimeMs { get; set; } = 500;
     public int AccelerationDeltaMs { get; set; } = 70;
-    public int AccelerationMax { get; set; } = 7;
+    public int AccelerationMax { get; set; } = 5;
     public int TailToHeadRatio { get; set; } = 3;
     public bool AnimationEasing { get; set; } = true;
     public bool ShiftKeyHorizontalScrolling { get; set; } = true;

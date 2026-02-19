@@ -1,0 +1,19 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(362,13): error CS0246: The type or namespace name 'AccelerationMetrics' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(417,20): error CS0246: The type or namespace name 'AccelerationMetrics' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(698,55): error CS0246: The type or namespace name 'ScrollImpulse' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(41,27): error CS0246: The type or namespace name 'ScrollImpulse' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(42,27): error CS0246: The type or namespace name 'ScrollImpulse' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+
+Build FAILED.
+
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(362,13): error CS0246: The type or namespace name 'AccelerationMetrics' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(417,20): error CS0246: The type or namespace name 'AccelerationMetrics' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(698,55): error CS0246: The type or namespace name 'ScrollImpulse' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(41,27): error CS0246: The type or namespace name 'ScrollImpulse' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\SmoothScrollService.cs(42,27): error CS0246: The type or namespace name 'ScrollImpulse' could not be found (are you missing a using directive or an assembly reference?) [G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\BrowserSmoothScroll.csproj]
+    0 Warning(s)
+    5 Error(s)
+
+Time Elapsed 00:00:01.11

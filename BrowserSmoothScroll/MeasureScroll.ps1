@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 # Configuration
 $UserAppDir = "g:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll"
 $UserAppExe = "$UserAppDir\bin\Debug\net8.0-windows\BrowserSmoothScroll.exe"
-$RefAppLnk = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\SmoothScroll\SmoothScroll.lnk"
+$RefAppLnk = "C:\Users\ranco\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\SmoothScroll\SmoothScroll.lnk"
 $SettingsDir = "$env:APPDATA\BrowserSmoothScroll"
 $SettingsFile = "$SettingsDir\settings.json"
 $LogsDir = "$SettingsDir\logs"
@@ -268,10 +268,12 @@ try {
     # -- Test 2: Reference App --
     Write-Host ""
     Write-Host "[TEST 2] Reference App (SmoothScroll)"
+    $env:BSS_ALLOW_TEST_INJECTED = $null
     Set-Settings -enabled $false -debugMode $true
 
-    Start-Process -FilePath $UserAppExe
     Start-Process -FilePath $RefAppLnk
+    Start-Sleep -Seconds 2
+    Start-Process -FilePath $UserAppExe
     Write-Host "  Reloading page and scrolling to top..."
     Start-Sleep -Seconds 2
     [InputInjector]::SendF5()
