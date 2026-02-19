@@ -7,7 +7,7 @@ namespace BrowserSmoothScroll;
 internal sealed class SmoothScrollService : IDisposable
 {
     private static bool EnableCoastMotion => true;
-    private const int AnimationTickMs = 13;
+    private const int AnimationTickMs = 14;
     private const int MaxEmitPerTick = 420;
     private const uint HighResolutionTimerPeriodMs = 1;
     private static readonly UIntPtr InjectionSignature = unchecked((UIntPtr)0x42535353u);
@@ -16,10 +16,10 @@ internal sealed class SmoothScrollService : IDisposable
         string.Equals(Environment.GetEnvironmentVariable("BSS_ALLOW_TEST_INJECTED"), "1", StringComparison.Ordinal);
     private const int CoastStartDelayMs = 14;
     private const double CoastKickGain = 0.22;
-    private const double CoastDragPerSecond = 4.5;
-    private const double CoastActiveDragPerSecond = 10.0;
+    private const double CoastDragPerSecond = 13.5;
+    private const double CoastActiveDragPerSecond = 18.0;
     private const double CoastMaxVelocity = 3600.0;
-    private const double CoastStopVelocity = 8.5;
+    private const double CoastStopVelocity = 20.0;
     private const double TailResidualBleedVelocity = 90.0;
     private const double TailResidualBleedPerSecond = 5.4;
     private const double ReleaseSeedGain = 0.92;
