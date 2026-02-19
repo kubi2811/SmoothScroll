@@ -1,6 +1,6 @@
 # <img src="BrowserSmoothScroll/favicon/Gemini_Generated_Image_raf4s0raf4s0raf4.png" width="48" height="48" align="center"/> Browser Smooth Scroll
 
-$\color{red}{\text{**EXACTLY THE SAME AS CURRENTLY AVAILABLE PAYMENT APPS (BUT FREE).**}}$ A lightweight utility for buttery smooth scrolling in web browsers on Windows.
+**EXACTLY THE SAME AS CURRENTLY AVAILABLE PAYMENT APPS (BUT FREE).** A lightweight utility for buttery smooth scrolling in web browsers on Windows.
 - Created on: 02/20/2026
 
 ## Requirements
