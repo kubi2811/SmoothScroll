@@ -53,35 +53,24 @@ internal sealed class SettingsForm : Form
 
     private void BuildUi()
     {
+        // 1. Bottom Buttons
         var buttonRow = new FlowLayoutPanel
         {
             FlowDirection = FlowDirection.RightToLeft,
             Dock = DockStyle.Bottom,
-            AutoSize = false,
-            Height = 44,
-            Padding = new Padding(12, 8, 12, 8)
+            AutoSize = true,
+            Padding = new Padding(15, 15, 15, 15),
+            BackColor = SystemColors.ControlLight
         };
 
-        var saveButton = new Button
-        {
-            Text = "Save",
-            AutoSize = true
-        };
+        var saveButton = new Button { Text = "Save", AutoSize = true, DialogResult = DialogResult.OK, MinimumSize = new Size(80, 30) };
         saveButton.Click += (_, _) => SaveAndClose();
 
-        var cancelButton = new Button
-        {
-            Text = "Cancel",
-            AutoSize = true
-        };
+        var cancelButton = new Button { Text = "Cancel", AutoSize = true, DialogResult = DialogResult.Cancel, MinimumSize = new Size(80, 30) };
         cancelButton.Click += (_, _) => Close();
 
-        var resetButton = new Button
-        {
-            Text = "Reset Defaults",
-            AutoSize = true
-        };
-        resetButton.Click += (_, _) => LoadFromSettings(new AppSettings());
+        var resetButton = new Button { Text = "Defaults", AutoSize = true, MinimumSize = new Size(80, 30) };
+        resetButton.Click += (_, _) => { LoadFromSettings(new AppSettings()); };
 
         buttonRow.Controls.Add(saveButton);
         buttonRow.Controls.Add(cancelButton);
@@ -90,11 +79,12 @@ internal sealed class SettingsForm : Form
         AcceptButton = saveButton;
         CancelButton = cancelButton;
 
+        // 2. Main Content
         var contentPanel = new Panel
         {
             Dock = DockStyle.Fill,
             AutoScroll = true,
-            Padding = new Padding(12)
+            Padding = new Padding(20)
         };
 
         var root = new TableLayoutPanel
@@ -106,100 +96,90 @@ internal sealed class SettingsForm : Form
             RowCount = 4
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
-        var noteLabel = new Label
+        // 3. Tip Banner
+        var tipPanel = new Panel
         {
-            Dock = DockStyle.Fill,
             AutoSize = true,
-            Text = "Tip: Disable browser native smooth scroll at chrome://flags/#smooth-scrolling and edge://flags/#smooth-scrolling to avoid double smoothing.",
+            BackColor = Color.FromArgb(240, 255, 240), // Very light green
+            Padding = new Padding(15),
+            Margin = new Padding(0, 0, 0, 20),
+            Dock = DockStyle.Fill
+        };
+        var tipLabel = new Label
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            Text = "Tip: Disable browser native smooth scroll (chrome://flags/#smooth-scrolling) to avoid double smoothing.",
             ForeColor = Color.DarkGreen,
             Font = new Font(Font, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 10)
+            MaximumSize = new Size(560, 0) // Limit width for wrapping
         };
+        tipPanel.Controls.Add(tipLabel);
 
-        var profileGroup = new GroupBox
-        {
-            Text = "Profile",
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink
-        };
-        var profileLayout = new FlowLayoutPanel
-        {
-            FlowDirection = FlowDirection.TopDown,
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            WrapContents = false,
-            Padding = new Padding(12, 10, 12, 10)
-        };
+        // 4. Profile Group
+        var profileGroup = CreateGroup("Profile");
+        var profileFlow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, Dock = DockStyle.Fill, AutoSize = true, WrapContents = false };
+        
+        _enabledCheckBox.Margin = new Padding(0, 0, 0, 8);
+        _autoStartCheckBox.Margin = new Padding(0, 0, 0, 8);
+        _allAppsCheckBox.Margin = new Padding(0, 0, 0, 15);
 
-        var processRow = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            WrapContents = false
-        };
-        processRow.Controls.Add(_processListLabel);
-        processRow.Controls.Add(_processListTextBox);
-        processRow.Controls.Add(_blockListLabel);
-        processRow.Controls.Add(_blockListTextBox);
+        profileFlow.Controls.Add(_enabledCheckBox);
+        profileFlow.Controls.Add(_autoStartCheckBox);
+        profileFlow.Controls.Add(_allAppsCheckBox);
 
-        profileLayout.Controls.Add(_enabledCheckBox);
-        profileLayout.Controls.Add(_autoStartCheckBox);
-        profileLayout.Controls.Add(_allAppsCheckBox);
-        profileLayout.Controls.Add(processRow);
-        profileGroup.Controls.Add(profileLayout);
+        var listLayout = new TableLayoutPanel { AutoSize = true, ColumnCount = 1, Width = 540 };
+        listLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        
+        _processListLabel.AutoSize = true; _processListTextBox.Dock = DockStyle.Fill;
+        _blockListLabel.AutoSize = true; _blockListTextBox.Dock = DockStyle.Fill;
 
-        var tuneGroup = new GroupBox
-        {
-            Text = "Tuning",
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink
-        };
+        listLayout.Controls.Add(_processListLabel, 0, 0);
+        listLayout.Controls.Add(_processListTextBox, 0, 1);
+        listLayout.Controls.Add(_blockListLabel, 0, 2);
+        listLayout.Controls.Add(_blockListTextBox, 0, 3);
+        
+        profileFlow.Controls.Add(listLayout);
+        profileGroup.Controls.Add(profileFlow);
 
-        var tuneLayout = new TableLayoutPanel
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            Padding = new Padding(12, 10, 12, 10),
-            ColumnCount = 2
+        // 5. Tuning Group
+        var tuneGroup = CreateGroup("Tuning");
+        var tuneTable = new TableLayoutPanel 
+        { 
+            Dock = DockStyle.Fill, 
+            AutoSize = true, 
+            ColumnCount = 2, 
+            Padding = new Padding(5)
         };
-        tuneLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 65));
-        tuneLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 35));
-        AddTuningRow(tuneLayout, "Step size [delta]", _stepSizeUpDown, 0);
-        AddTuningRow(tuneLayout, "Animation time [ms]", _animationTimeUpDown, 1);
-        AddTuningRow(tuneLayout, "Acceleration delta [ms]", _accelerationDeltaUpDown, 2);
-        AddTuningRow(tuneLayout, "Acceleration max", _accelerationMaxUpDown, 3);
-        AddTuningRow(tuneLayout, "Tail to head ratio [x]", _tailToHeadRatioUpDown, 4);
-        tuneGroup.Controls.Add(tuneLayout);
+        tuneTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70));
+        tuneTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30));
 
-        var behaviorGroup = new GroupBox
-        {
-            Text = "Behavior",
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            AutoSizeMode = AutoSizeMode.GrowAndShrink
-        };
-        var behaviorLayout = new FlowLayoutPanel
-        {
-            FlowDirection = FlowDirection.TopDown,
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            WrapContents = false,
-            Padding = new Padding(12, 10, 12, 10)
-        };
-        behaviorLayout.Controls.Add(_animationEasingCheckBox);
-        behaviorLayout.Controls.Add(_shiftHorizontalCheckBox);
-        behaviorLayout.Controls.Add(_horizontalSmoothnessCheckBox);
-        behaviorLayout.Controls.Add(_reverseDirectionCheckBox);
-        behaviorLayout.Controls.Add(_debugModeCheckBox);
-        behaviorGroup.Controls.Add(behaviorLayout);
+        AddTuningRow(tuneTable, "Step Size (px)", _stepSizeUpDown, 0);
+        AddTuningRow(tuneTable, "Animation Time (ms)", _animationTimeUpDown, 1);
+        AddTuningRow(tuneTable, "Acceleration Delta (ms)", _accelerationDeltaUpDown, 2);
+        AddTuningRow(tuneTable, "Max Acceleration (x)", _accelerationMaxUpDown, 3);
+        AddTuningRow(tuneTable, "Tail-to-Head Ratio", _tailToHeadRatioUpDown, 4);
+        tuneGroup.Controls.Add(tuneTable);
 
-        root.Controls.Add(noteLabel, 0, 0);
+        // 6. Behavior Group
+        var behaviorGroup = CreateGroup("Behavior");
+        var behaviorFlow = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, Dock = DockStyle.Fill, AutoSize = true };
+        _animationEasingCheckBox.Margin = new Padding(0, 5, 0, 5);
+        _shiftHorizontalCheckBox.Margin = new Padding(0, 5, 0, 5);
+        _horizontalSmoothnessCheckBox.Margin = new Padding(0, 5, 0, 5);
+        _reverseDirectionCheckBox.Margin = new Padding(0, 5, 0, 5);
+        _debugModeCheckBox.Margin = new Padding(0, 5, 0, 5);
+
+        behaviorFlow.Controls.Add(_animationEasingCheckBox);
+        behaviorFlow.Controls.Add(_shiftHorizontalCheckBox);
+        behaviorFlow.Controls.Add(_horizontalSmoothnessCheckBox);
+        behaviorFlow.Controls.Add(_reverseDirectionCheckBox);
+        behaviorFlow.Controls.Add(_debugModeCheckBox);
+        behaviorGroup.Controls.Add(behaviorFlow);
+
+        // Assemble
+        root.Controls.Add(tipPanel, 0, 0);
         root.Controls.Add(profileGroup, 0, 1);
         root.Controls.Add(tuneGroup, 0, 2);
         root.Controls.Add(behaviorGroup, 0, 3);
@@ -207,6 +187,20 @@ internal sealed class SettingsForm : Form
         contentPanel.Controls.Add(root);
         Controls.Add(contentPanel);
         Controls.Add(buttonRow);
+    }
+
+    private GroupBox CreateGroup(string title)
+    {
+        return new GroupBox
+        {
+            Text = title,
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(15, 25, 15, 15), // Top padding accounts for group title
+            Margin = new Padding(0, 0, 0, 15),
+            Font = new Font(Font.FontFamily, 10f, FontStyle.Regular) // Slightly larger font for group
+        };
     }
 
     private static NumericUpDown NewNumeric(int min, int max)

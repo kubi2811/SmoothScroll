@@ -1,0 +1,12 @@
+# Build results
+/bin/
+/obj/
+**/bin/
+**/obj/
+
+# Visual Studio
+.vs/
+*.user
+
+# Logs
+*.log

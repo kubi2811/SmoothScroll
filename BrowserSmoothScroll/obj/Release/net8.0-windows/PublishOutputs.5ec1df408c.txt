@@ -1,5 +1,0 @@
-G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Publish\Standard\BrowserSmoothScroll.exe
-G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Publish\Standard\BrowserSmoothScroll.dll
-G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Publish\Standard\BrowserSmoothScroll.deps.json
-G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Publish\Standard\BrowserSmoothScroll.runtimeconfig.json
-G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Publish\Standard\BrowserSmoothScroll.pdb

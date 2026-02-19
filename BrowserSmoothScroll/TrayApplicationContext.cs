@@ -61,7 +61,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
 
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath),
             Text = "Browser Smooth Scroll",
             Visible = true,
             ContextMenuStrip = menu
@@ -73,6 +73,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
         try
         {
             _scrollService.Start();
+            _notifyIcon.ShowBalloonTip(3000, "Browser Smooth Scroll Started", "Smooth sailing! App is active in the tray.", ToolTipIcon.Info);
         }
         catch (Exception ex)
         {

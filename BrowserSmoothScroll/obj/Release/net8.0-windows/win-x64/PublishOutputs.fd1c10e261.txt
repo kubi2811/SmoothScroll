@@ -1,2 +1,0 @@
-G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Publish\Portable\BrowserSmoothScroll.pdb
-G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Publish\Portable\BrowserSmoothScroll.exe
