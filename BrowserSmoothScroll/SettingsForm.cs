@@ -5,7 +5,10 @@ internal sealed class SettingsForm : Form
     private readonly CheckBox _enabledCheckBox = new() { Text = "Enabled", AutoSize = true };
     private readonly CheckBox _autoStartCheckBox = new() { Text = "Auto start on login", AutoSize = true };
     private readonly CheckBox _allAppsCheckBox = new() { Text = "Enable for all apps by default", AutoSize = true };
+    private readonly Label _processListLabel = new() { Text = "Process allow list (comma):", AutoSize = true, Margin = new Padding(0, 8, 8, 0) };
     private readonly TextBox _processListTextBox = new() { Width = 260 };
+    private readonly Label _blockListLabel = new() { Text = "Process block list (comma):", AutoSize = true, Margin = new Padding(0, 8, 8, 0) };
+    private readonly TextBox _blockListTextBox = new() { Width = 260 };
 
     private readonly NumericUpDown _stepSizeUpDown = NewNumeric(20, 600);
     private readonly NumericUpDown _animationTimeUpDown = NewNumeric(40, 2000);
@@ -30,10 +33,22 @@ internal sealed class SettingsForm : Form
         MaximizeBox = false;
         ShowInTaskbar = false;
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(640, 640);
+        ClientSize = new Size(640, 700);
 
         BuildUi();
         LoadFromSettings(currentSettings);
+        
+        _allAppsCheckBox.CheckedChanged += (_, _) => UpdateListVisibility();
+        UpdateListVisibility();
+    }
+
+    private void UpdateListVisibility()
+    {
+        var allApps = _allAppsCheckBox.Checked;
+        _processListLabel.Visible = !allApps;
+        _processListTextBox.Visible = !allApps;
+        _blockListLabel.Visible = allApps;
+        _blockListTextBox.Visible = allApps;
     }
 
     private void BuildUi()
@@ -96,6 +111,16 @@ internal sealed class SettingsForm : Form
         root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
+        var noteLabel = new Label
+        {
+            Dock = DockStyle.Fill,
+            AutoSize = true,
+            Text = "Tip: Disable browser native smooth scroll at chrome://flags/#smooth-scrolling and edge://flags/#smooth-scrolling to avoid double smoothing.",
+            ForeColor = Color.DarkGreen,
+            Font = new Font(Font, FontStyle.Bold),
+            Margin = new Padding(0, 0, 0, 10)
+        };
+
         var profileGroup = new GroupBox
         {
             Text = "Profile",
@@ -117,13 +142,10 @@ internal sealed class SettingsForm : Form
             AutoSize = true,
             WrapContents = false
         };
-        processRow.Controls.Add(new Label
-        {
-            Text = "Process allow list (comma):",
-            AutoSize = true,
-            Margin = new Padding(0, 8, 8, 0)
-        });
+        processRow.Controls.Add(_processListLabel);
         processRow.Controls.Add(_processListTextBox);
+        processRow.Controls.Add(_blockListLabel);
+        processRow.Controls.Add(_blockListTextBox);
 
         profileLayout.Controls.Add(_enabledCheckBox);
         profileLayout.Controls.Add(_autoStartCheckBox);
@@ -177,17 +199,10 @@ internal sealed class SettingsForm : Form
         behaviorLayout.Controls.Add(_debugModeCheckBox);
         behaviorGroup.Controls.Add(behaviorLayout);
 
-        var noteLabel = new Label
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            Text = "Tip: Disable browser native smooth scroll at chrome://flags/#smooth-scrolling and edge://flags/#smooth-scrolling to avoid double smoothing."
-        };
-
-        root.Controls.Add(profileGroup, 0, 0);
-        root.Controls.Add(tuneGroup, 0, 1);
-        root.Controls.Add(behaviorGroup, 0, 2);
-        root.Controls.Add(noteLabel, 0, 3);
+        root.Controls.Add(noteLabel, 0, 0);
+        root.Controls.Add(profileGroup, 0, 1);
+        root.Controls.Add(tuneGroup, 0, 2);
+        root.Controls.Add(behaviorGroup, 0, 3);
 
         contentPanel.Controls.Add(root);
         Controls.Add(contentPanel);
@@ -229,6 +244,7 @@ internal sealed class SettingsForm : Form
         _autoStartCheckBox.Checked = settings.AutoStartOnLogin;
         _allAppsCheckBox.Checked = settings.EnableForAllAppsByDefault;
         _processListTextBox.Text = settings.ProcessAllowList;
+        _blockListTextBox.Text = settings.ProcessBlockList;
         _stepSizeUpDown.Value = settings.StepSize;
         _animationTimeUpDown.Value = settings.AnimationTimeMs;
         _accelerationDeltaUpDown.Value = settings.AccelerationDeltaMs;
@@ -249,6 +265,7 @@ internal sealed class SettingsForm : Form
             AutoStartOnLogin = _autoStartCheckBox.Checked,
             EnableForAllAppsByDefault = _allAppsCheckBox.Checked,
             ProcessAllowList = _processListTextBox.Text,
+            ProcessBlockList = _blockListTextBox.Text,
             StepSize = decimal.ToInt32(_stepSizeUpDown.Value),
             AnimationTimeMs = decimal.ToInt32(_animationTimeUpDown.Value),
             AccelerationDeltaMs = decimal.ToInt32(_accelerationDeltaUpDown.Value),

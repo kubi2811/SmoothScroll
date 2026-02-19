@@ -9,6 +9,7 @@ internal sealed class BrowserProcessTracker : IDisposable
     private readonly Timer _refreshTimer;
     private readonly object _stateLock = new();
     private HashSet<int> _trackedProcessIds = [];
+    private HashSet<int> _blockedProcessIds = [];
     private bool _disposed;
 
     public BrowserProcessTracker(Func<AppSettings> settingsProvider)
@@ -25,6 +26,14 @@ internal sealed class BrowserProcessTracker : IDisposable
         }
     }
 
+    public bool IsBlocked(uint pid)
+    {
+        lock (_stateLock)
+        {
+            return _blockedProcessIds.Contains(unchecked((int)pid));
+        }
+    }
+
     public void RefreshNow()
     {
         RefreshTrackedProcesses();
@@ -38,17 +47,32 @@ internal sealed class BrowserProcessTracker : IDisposable
         }
 
         var settings = _settingsProvider();
+        var blocked = new HashSet<int>();
+        foreach (var processName in settings.BlockedProcessNames)
+        {
+            try
+            {
+                foreach (var process in Process.GetProcessesByName(processName))
+                {
+                    blocked.Add(process.Id);
+                    process.Dispose(); // Using Dispose explicitly inside loop
+                }
+            }
+            catch {}
+        }
+
         if (settings.EnableForAllAppsByDefault)
         {
             lock (_stateLock)
             {
                 _trackedProcessIds = [];
+                _blockedProcessIds = blocked;
             }
 
             return;
         }
 
-        var next = new HashSet<int>();
+        var tracked = new HashSet<int>();
 
         foreach (var processName in settings.AllowedProcessNames)
         {
@@ -59,7 +83,7 @@ internal sealed class BrowserProcessTracker : IDisposable
                 {
                     try
                     {
-                        next.Add(process.Id);
+                        tracked.Add(process.Id);
                     }
                     finally
                     {
@@ -75,7 +99,8 @@ internal sealed class BrowserProcessTracker : IDisposable
 
         lock (_stateLock)
         {
-            _trackedProcessIds = next;
+            _trackedProcessIds = tracked;
+            _blockedProcessIds = blocked;
         }
     }
 

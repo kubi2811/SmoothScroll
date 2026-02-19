@@ -5,7 +5,7 @@ namespace BrowserSmoothScroll;
 internal sealed class AppSettings
 {
     public bool Enabled { get; set; } = true;
-    public bool AutoStartOnLogin { get; set; } = false;
+    public bool AutoStartOnLogin { get; set; } = true;
     public bool EnableForAllAppsByDefault { get; set; } = true;
     public int StepSize { get; set; } = 120;
     public int AnimationTimeMs { get; set; } = 500;
@@ -18,10 +18,19 @@ internal sealed class AppSettings
     public bool ReverseWheelDirection { get; set; } = false;
     public bool DebugMode { get; set; } = false;
     public string ProcessAllowList { get; set; } = "chrome,msedge";
+    public string ProcessBlockList { get; set; } = "";
 
     [JsonIgnore]
     public string[] AllowedProcessNames =>
         ProcessAllowList
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(static name => name.ToLowerInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    [JsonIgnore]
+    public string[] BlockedProcessNames =>
+        ProcessBlockList
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(static name => name.ToLowerInvariant())
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -43,7 +52,8 @@ internal sealed class AppSettings
             HorizontalSmoothness = HorizontalSmoothness,
             ReverseWheelDirection = ReverseWheelDirection,
             DebugMode = DebugMode,
-            ProcessAllowList = ProcessAllowList
+            ProcessAllowList = ProcessAllowList,
+            ProcessBlockList = ProcessBlockList
         };
 
     public void Normalize()
@@ -56,6 +66,9 @@ internal sealed class AppSettings
         ProcessAllowList = string.Join(
             ",",
             AllowedProcessNames.Where(static name => !string.IsNullOrWhiteSpace(name)));
+        ProcessBlockList = string.Join(
+            ",",
+            BlockedProcessNames.Where(static name => !string.IsNullOrWhiteSpace(name)));
 
         if (string.IsNullOrWhiteSpace(ProcessAllowList))
         {

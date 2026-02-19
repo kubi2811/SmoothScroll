@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.Threading;
+using System.Linq;
+using System.Linq;
 
 namespace BrowserSmoothScroll;
 
@@ -12,6 +14,7 @@ internal sealed class TrayApplicationContext : ApplicationContext
     private readonly SmoothScrollService _scrollService;
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _enabledMenuItem;
+    private readonly ToolStripMenuItem _blockAppMenuItem;
     private AppSettings _settings;
 
     public TrayApplicationContext()
@@ -43,9 +46,18 @@ internal sealed class TrayApplicationContext : ApplicationContext
         var menu = new ContextMenuStrip();
         menu.Items.Add(settingsMenuItem);
         menu.Items.Add(openLogsMenuItem);
+        menu.Items.Add(new ToolStripSeparator());
+        
+        _blockAppMenuItem = new ToolStripMenuItem("Block App...");
+        _blockAppMenuItem.Click += (_, _) => ToggleBlockCurrentApp();
+        menu.Items.Add(_blockAppMenuItem);
+        
+        menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_enabledMenuItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(exitMenuItem);
+
+        menu.Opening += (_, _) => UpdateBlockAppMenuItem();
 
         _notifyIcon = new NotifyIcon
         {
@@ -130,6 +142,56 @@ internal sealed class TrayApplicationContext : ApplicationContext
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);
         }
+    }
+
+    private void UpdateBlockAppMenuItem()
+    {
+        var handle = NativeMethods.GetForegroundWindow();
+        if (handle == IntPtr.Zero)
+        {
+            _blockAppMenuItem.Enabled = false;
+            return;
+        }
+
+        NativeMethods.GetWindowThreadProcessId(handle, out var pid);
+        try
+        {
+            using var process = Process.GetProcessById((int)pid);
+            var processName = process.ProcessName;
+            var settings = GetCurrentSettings();
+            
+            var isBlocked = settings.BlockedProcessNames.Contains(processName, StringComparer.OrdinalIgnoreCase);
+
+            _blockAppMenuItem.Text = isBlocked 
+                ? $"Unblock {processName}" 
+                : $"Block {processName}";
+            
+            _blockAppMenuItem.Tag = processName;
+            _blockAppMenuItem.Enabled = true;
+        }
+        catch
+        {
+            _blockAppMenuItem.Text = "Block App...";
+            _blockAppMenuItem.Enabled = false;
+        }
+    }
+
+    private void ToggleBlockCurrentApp()
+    {
+        if (_blockAppMenuItem.Tag is not string processName) return;
+
+        var settings = GetEditableSettings();
+        var blocked = settings.BlockedProcessNames.ToList();
+        
+        var removed = blocked.RemoveAll(x => string.Equals(x, processName, StringComparison.OrdinalIgnoreCase)) > 0;
+        
+        if (!removed)
+        {
+            blocked.Add(processName);
+        }
+
+        settings.ProcessBlockList = string.Join(",", blocked);
+        ApplySettings(settings, persist: true);
     }
 
     private AppSettings GetCurrentSettings()

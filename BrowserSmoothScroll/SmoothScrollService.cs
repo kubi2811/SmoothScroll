@@ -181,6 +181,16 @@ internal sealed class SmoothScrollService : IDisposable
         }
 
         NativeMethods.GetWindowThreadProcessId(foregroundWindow, out var pid);
+        if (_processTracker.IsBlocked(pid))
+        {
+            if (settings.DebugMode)
+            {
+                _debugLogger.LogHookWheel(horizontalFromMessage, rawDelta, injected, selfInjected, pid, "pass-blocked");
+            }
+
+            return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+        }
+
         if (!settings.EnableForAllAppsByDefault && !_processTracker.IsTracked(pid))
         {
             if (settings.DebugMode)

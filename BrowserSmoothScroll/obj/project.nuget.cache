@@ -1,8 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "WYGyU29PeW8=",
+  "dgSpecHash": "oheJFTT+sh0=",
   "success": true,
   "projectFilePath": "G:\\Antigravity_Project\\NoNamePJ04\\BrowserSmoothScroll\\BrowserSmoothScroll.csproj",
-  "expectedPackageFiles": [],
+  "expectedPackageFiles": [
+    "C:\\Users\\ranco\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.23\\microsoft.net.illink.tasks.8.0.23.nupkg.sha512"
+  ],
   "logs": []
 }
