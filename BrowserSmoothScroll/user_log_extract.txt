@@ -1,0 +1,50 @@
+2026-02-19T17:21:00.4063326+07:00 IMPULSE dir=V raw=-120 target=-208.547 accel=1.738 durationMs=331 combo=2 comboRatio=0.286 elapsedMs=63 cadence=0.100
+2026-02-19T17:21:00.4063427+07:00 HOOK action=consume dir=V raw=-120 source=raw pid=14116
+2026-02-19T17:21:00.4115975+07:00 TICK outV=-18 outH=0 resV=-0.056 resH=0.000 activeV=3 activeH=0
+2026-02-19T17:21:00.4117008+07:00 HOOK action=recv dir=V raw=-18 source=self-injected pid=14116
+2026-02-19T17:21:00.4117230+07:00 HOOK action=pass-self-injected dir=V raw=-18 source=self-injected pid=14116
+2026-02-19T17:21:00.4206475+07:00 TICK outV=-19 outH=0 resV=-0.468 resH=0.000 activeV=3 activeH=0
+2026-02-19T17:21:00.4210291+07:00 HOOK action=recv dir=V raw=-19 source=self-injected pid=14116
+2026-02-19T17:21:00.4210557+07:00 HOOK action=pass-self-injected dir=V raw=-19 source=self-injected pid=14116
+2026-02-19T17:21:00.4310689+07:00 TICK outV=-22 outH=0 resV=-0.425 resH=0.000 activeV=3 activeH=0
+2026-02-19T17:21:00.4311786+07:00 HOOK action=recv dir=V raw=-22 source=self-injected pid=14116
+2026-02-19T17:21:00.4312042+07:00 HOOK action=pass-self-injected dir=V raw=-22 source=self-injected pid=14116
+2026-02-19T17:21:00.4413250+07:00 TICK outV=-21 outH=0 resV=-0.618 resH=0.000 activeV=3 activeH=0
+2026-02-19T17:21:00.4415165+07:00 HOOK action=recv dir=V raw=-21 source=self-injected pid=14116
+2026-02-19T17:21:00.4415417+07:00 HOOK action=pass-self-injected dir=V raw=-21 source=self-injected pid=14116
+2026-02-19T17:21:00.4524475+07:00 TICK outV=-23 outH=0 resV=-0.119 resH=0.000 activeV=3 activeH=0
+2026-02-19T17:21:00.4525630+07:00 HOOK action=recv dir=V raw=-23 source=self-injected pid=14116
+2026-02-19T17:21:00.4525876+07:00 HOOK action=pass-self-injected dir=V raw=-23 source=self-injected pid=14116
+2026-02-19T17:21:00.4607640+07:00 TICK outV=-16 outH=0 resV=-0.607 resH=0.000 activeV=3 activeH=0
+2026-02-19T17:21:00.4608608+07:00 HOOK action=recv dir=V raw=-16 source=self-injected pid=14116
+2026-02-19T17:21:00.4608850+07:00 HOOK action=pass-self-injected dir=V raw=-16 source=self-injected pid=14116
+2026-02-19T17:21:00.4682382+07:00 HOOK action=recv dir=V raw=-120 source=raw pid=14116
+2026-02-19T17:21:00.4682859+07:00 IMPULSE dir=V raw=-120 target=-225.893 accel=1.882 durationMs=325 combo=3 comboRatio=0.429 elapsedMs=62 cadence=0.114
+2026-02-19T17:21:00.4682966+07:00 HOOK action=consume dir=V raw=-120 source=raw pid=14116
+2026-02-19T17:21:00.4711337+07:00 TICK outV=-23 outH=0 resV=-0.705 resH=0.000 activeV=4 activeH=0
+2026-02-19T17:21:00.4716599+07:00 HOOK action=recv dir=V raw=-23 source=self-injected pid=14116
+2026-02-19T17:21:00.4716908+07:00 HOOK action=pass-self-injected dir=V raw=-23 source=self-injected pid=14116
+2026-02-19T17:21:00.4818317+07:00 TICK outV=-32 outH=0 resV=-0.047 resH=0.000 activeV=4 activeH=0
+2026-02-19T17:21:00.4819292+07:00 HOOK action=recv dir=V raw=-32 source=self-injected pid=14116
+2026-02-19T17:21:00.4819526+07:00 HOOK action=pass-self-injected dir=V raw=-32 source=self-injected pid=14116
+2026-02-19T17:21:00.4919212+07:00 TICK outV=-28 outH=0 resV=-0.929 resH=0.000 activeV=4 activeH=0
+2026-02-19T17:21:00.4921670+07:00 HOOK action=recv dir=V raw=-28 source=self-injected pid=14116
+2026-02-19T17:21:00.4922021+07:00 HOOK action=pass-self-injected dir=V raw=-28 source=self-injected pid=14116
+2026-02-19T17:21:00.5024904+07:00 TICK outV=-30 outH=0 resV=-0.550 resH=0.000 activeV=4 activeH=0
+2026-02-19T17:21:00.5026182+07:00 HOOK action=recv dir=V raw=-30 source=self-injected pid=14116
+2026-02-19T17:21:00.5026465+07:00 HOOK action=pass-self-injected dir=V raw=-30 source=self-injected pid=14116
+2026-02-19T17:21:00.5113542+07:00 TICK outV=-24 outH=0 resV=-0.833 resH=0.000 activeV=4 activeH=0
+2026-02-19T17:21:00.5115541+07:00 HOOK action=recv dir=V raw=-24 source=self-injected pid=14116
+2026-02-19T17:21:00.5115806+07:00 HOOK action=pass-self-injected dir=V raw=-24 source=self-injected pid=14116
+2026-02-19T17:21:00.5192450+07:00 HOOK action=recv dir=V raw=-120 source=raw pid=14116
+2026-02-19T17:21:00.5192955+07:00 IMPULSE dir=V raw=-120 target=-253.628 accel=2.114 durationMs=316 combo=4 comboRatio=0.571 elapsedMs=47 cadence=0.329
+2026-02-19T17:21:00.5193061+07:00 HOOK action=consume dir=V raw=-120 source=raw pid=14116
+2026-02-19T17:21:00.5219947+07:00 TICK outV=-32 outH=0 resV=-0.572 resH=0.000 activeV=5 activeH=0
+2026-02-19T17:21:00.5220764+07:00 HOOK action=recv dir=V raw=-32 source=self-injected pid=14116
+2026-02-19T17:21:00.5220950+07:00 HOOK action=pass-self-injected dir=V raw=-32 source=self-injected pid=14116
+2026-02-19T17:21:00.5320383+07:00 TICK outV=-38 outH=0 resV=-0.693 resH=0.000 activeV=5 activeH=0
+2026-02-19T17:21:00.5321391+07:00 HOOK action=recv dir=V raw=-38 source=self-injected pid=14116
+2026-02-19T17:21:00.5321579+07:00 HOOK action=pass-self-injected dir=V raw=-38 source=self-injected pid=14116
+2026-02-19T17:21:00.5419712+07:00 TICK outV=-37 outH=0 resV=-0.536 resH=0.000 activeV=5 activeH=0
+2026-02-19T17:21:00.5420728+07:00 HOOK action=recv dir=V raw=-37 source=self-injected pid=14116
+2026-02-19T17:21:00.5420970+07:00 HOOK action=pass-self-injected dir=V raw=-37 source=self-injected pid=14116

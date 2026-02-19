@@ -6,8 +6,8 @@ namespace BrowserSmoothScroll;
 
 internal sealed class SmoothScrollService : IDisposable
 {
-    private static bool EnableCoastMotion => false;
-    private const int AnimationTickMs = 10;
+    private static bool EnableCoastMotion => true;
+    private const int AnimationTickMs = 13;
     private const int MaxEmitPerTick = 420;
     private const uint HighResolutionTimerPeriodMs = 1;
     private static readonly UIntPtr InjectionSignature = unchecked((UIntPtr)0x42535353u);
@@ -16,7 +16,7 @@ internal sealed class SmoothScrollService : IDisposable
         string.Equals(Environment.GetEnvironmentVariable("BSS_ALLOW_TEST_INJECTED"), "1", StringComparison.Ordinal);
     private const int CoastStartDelayMs = 14;
     private const double CoastKickGain = 0.22;
-    private const double CoastDragPerSecond = 6.6;
+    private const double CoastDragPerSecond = 4.5;
     private const double CoastActiveDragPerSecond = 10.0;
     private const double CoastMaxVelocity = 3600.0;
     private const double CoastStopVelocity = 8.5;
@@ -716,7 +716,9 @@ internal sealed class SmoothScrollService : IDisposable
         }
 
         var baseMagnitude = Math.Max(4, Math.Abs(previousDelta));
-        var maxStep = Math.Clamp((int)Math.Round(baseMagnitude * 0.45), 2, 18);
+        // Allow rapid acceleration (60% increase per tick) for flings, but dampen noise.
+        // No hard cap (like 18) to prevent "stalling" feeling on fast scrolls.
+        var maxStep = Math.Max(2, (int)Math.Round(baseMagnitude * 0.60));
         var minAllowed = previousDelta - maxStep;
         var maxAllowed = previousDelta + maxStep;
         var limited = Math.Clamp(deltaToSend, minAllowed, maxAllowed);
