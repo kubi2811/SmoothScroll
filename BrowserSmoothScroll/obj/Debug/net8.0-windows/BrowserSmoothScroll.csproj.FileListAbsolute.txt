@@ -1,0 +1,14 @@
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.GeneratedMSBuildEditorConfig.editorconfig
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.AssemblyInfoInputs.cache
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.AssemblyInfo.cs
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.csproj.CoreCompileInputs.cache
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Debug\net8.0-windows\BrowserSmoothScroll.exe
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Debug\net8.0-windows\BrowserSmoothScroll.deps.json
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Debug\net8.0-windows\BrowserSmoothScroll.runtimeconfig.json
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Debug\net8.0-windows\BrowserSmoothScroll.dll
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\bin\Debug\net8.0-windows\BrowserSmoothScroll.pdb
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.dll
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\refint\BrowserSmoothScroll.dll
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.pdb
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.genruntimeconfig.cache
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\ref\BrowserSmoothScroll.dll
