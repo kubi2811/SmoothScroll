@@ -23,9 +23,9 @@ internal sealed class SmoothScrollService : IDisposable
     private const double TailResidualBleedVelocity = 90.0;
     private const double TailResidualBleedPerSecond = 5.4;
     private const double ReleaseSeedGain = 0.92;
-    private const double AccelerationStrength = 0.92;
-    private const double CadenceBoostStrength = 0.45;
-    private const double MaxAccelerationMultiplier = 3.20;
+    private const double AccelerationStrength = 1.20;
+    private const double CadenceBoostStrength = 0.55;
+    private const double MaxAccelerationMultiplier = 3.50;
     private const int DebugActiveTickLogInterval = 8;
     private const int DirectionJitterWindowMs = 35;
     private const int DirectionJitterMinCombo = 2;
@@ -61,6 +61,8 @@ internal sealed class SmoothScrollService : IDisposable
     private long _lastHorizontalDirectionMs = long.MinValue;
     private int _lastVerticalAccelerationDirection;
     private int _lastHorizontalAccelerationDirection;
+    private int _lastVerticalEmittedDelta;
+    private int _lastHorizontalEmittedDelta;
     private int _tickRunning;
     private int _debugTickCounter;
     private bool _highResolutionTimerEnabled;
@@ -163,16 +165,6 @@ internal sealed class SmoothScrollService : IDisposable
             _debugLogger.LogHookWheel(horizontalFromMessage, rawDelta, injected, selfInjected, pid, "recv");
         }
 
-        if (!settings.Enabled)
-        {
-            if (settings.DebugMode)
-            {
-                _debugLogger.LogHookWheel(horizontalFromMessage, rawDelta, injected, selfInjected, pid, "pass-disabled");
-            }
-
-            return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
-        }
-
         if (injected)
         {
             if (settings.DebugMode)
@@ -184,6 +176,16 @@ internal sealed class SmoothScrollService : IDisposable
                     selfInjected,
                     pid,
                     selfInjected ? "pass-self-injected" : "pass-external-injected");
+            }
+
+            return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+        }
+
+        if (!settings.Enabled)
+        {
+            if (settings.DebugMode)
+            {
+                _debugLogger.LogHookWheel(horizontalFromMessage, rawDelta, injected, selfInjected, pid, "pass-disabled");
             }
 
             return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
@@ -415,7 +417,7 @@ internal sealed class SmoothScrollService : IDisposable
         var clampedElapsed = Math.Clamp(elapsedMs, 0, safeWindow);
         var cadenceRatio = 1.0 - (clampedElapsed / (double)safeWindow);
         var comboRatio = combo / (double)Math.Max(1, accelerationMax);
-        var comboBoost = Math.Pow(Math.Clamp(comboRatio, 0.0, 1.0), 0.70) * AccelerationStrength;
+        var comboBoost = Math.Pow(Math.Clamp(comboRatio, 0.0, 1.0), 0.45) * AccelerationStrength;
         var cadenceBoost = cadenceRatio * CadenceBoostStrength;
         var factor = Math.Clamp(1.0 + comboBoost + cadenceBoost, 1.0, MaxAccelerationMultiplier);
         return new AccelerationMetrics(factor, combo, clampedElapsed, comboRatio, cadenceRatio);
@@ -425,9 +427,9 @@ internal sealed class SmoothScrollService : IDisposable
     {
         var normalizedBase = Math.Clamp(baseDurationMs, 40, 2000);
         var accelerationImpact = Math.Max(0.0, accelFactor - 1.0);
-        var shortenRatio = Math.Min(0.60, accelerationImpact * 0.22);
+        var shortenRatio = Math.Min(0.45, accelerationImpact * 0.11);
         var scaled = normalizedBase * (1.0 - shortenRatio);
-        return Math.Max(180, (int)Math.Round(scaled));
+        return Math.Max(80, (int)Math.Round(scaled));
     }
 
     private void OnAnimationTick(object? _)
@@ -497,6 +499,8 @@ internal sealed class SmoothScrollService : IDisposable
                 horizontalDeltaToSend = TakeIntegral(ref _horizontalResidual);
                 ApplyPerTickCap(ref verticalDeltaToSend, ref _verticalResidual);
                 ApplyPerTickCap(ref horizontalDeltaToSend, ref _horizontalResidual);
+                ApplyDeltaSlewLimit(ref verticalDeltaToSend, ref _verticalResidual, ref _lastVerticalEmittedDelta);
+                ApplyDeltaSlewLimit(ref horizontalDeltaToSend, ref _horizontalResidual, ref _lastHorizontalEmittedDelta);
                 activeVerticalImpulses = _verticalImpulses.Count;
                 activeHorizontalImpulses = _horizontalImpulses.Count;
                 residualVerticalSnapshot = _verticalResidual;
@@ -523,6 +527,8 @@ internal sealed class SmoothScrollService : IDisposable
                     _horizontalCombo = 0;
                     _lastVerticalAccelerationDirection = 0;
                     _lastHorizontalAccelerationDirection = 0;
+                    _lastVerticalEmittedDelta = 0;
+                    _lastHorizontalEmittedDelta = 0;
                 }
             }
 
@@ -695,6 +701,36 @@ internal sealed class SmoothScrollService : IDisposable
         residual += spill;
     }
 
+    private static void ApplyDeltaSlewLimit(ref int deltaToSend, ref double residual, ref int previousDelta)
+    {
+        if (deltaToSend == 0)
+        {
+            previousDelta = 0;
+            return;
+        }
+
+        if (previousDelta == 0 || Math.Sign(deltaToSend) != Math.Sign(previousDelta))
+        {
+            previousDelta = deltaToSend;
+            return;
+        }
+
+        var baseMagnitude = Math.Max(4, Math.Abs(previousDelta));
+        var maxStep = Math.Clamp((int)Math.Round(baseMagnitude * 0.45), 2, 18);
+        var minAllowed = previousDelta - maxStep;
+        var maxAllowed = previousDelta + maxStep;
+        var limited = Math.Clamp(deltaToSend, minAllowed, maxAllowed);
+        var spill = deltaToSend - limited;
+
+        if (spill != 0)
+        {
+            residual += spill;
+        }
+
+        deltaToSend = limited;
+        previousDelta = deltaToSend;
+    }
+
     private static void InjectWheelDelta(int delta, bool horizontal)
     {
         var input = new NativeMethods.INPUT[]
@@ -739,6 +775,8 @@ internal sealed class SmoothScrollService : IDisposable
             _horizontalReleaseSeedRate = 0;
             _verticalReleaseSeedPending = false;
             _horizontalReleaseSeedPending = false;
+            _lastVerticalEmittedDelta = 0;
+            _lastHorizontalEmittedDelta = 0;
             _verticalImpulses.Clear();
             _horizontalImpulses.Clear();
         }
@@ -806,15 +844,20 @@ internal sealed class SmoothScrollService : IDisposable
 
         private static double ApplyEasing(double progress, double ratio)
         {
-            // Minimum-jerk profile removes the abrupt head kick and tail snap.
-            var smooth = SmootherStep(progress);
+            // Ease-out power-1.5: starts at ~1.5x average velocity, decelerates smoothly.
+            // Unlike SmootherStep (starts at 0 velocity → produces sub-pixel head trickle
+            // that truncates to 0px → visible stepping), this curve emits meaningful pixels
+            // from tick 1, so the eye can track text during slow scroll.
+            // Power 1.5 = gentle start (not jarring like cubic) but immediate motion.
+            var easeOut = 1.0 - Math.Pow(1.0 - progress, 1.5);
             var tailBias = Math.Clamp((ratio - 1.0) / 9.0, 0.0, 1.0);
             var tailCurve = 1.0 - Math.Pow(1.0 - progress, 1.4 + (tailBias * 0.8));
-            return Lerp(smooth, tailCurve, tailBias * 0.15);
+            return Lerp(easeOut, tailCurve, tailBias * 0.15);
         }
 
         private static double SmootherStep(double value)
         {
+            // 6th-degree Hermite interpolant: f(0)=0, f(1)=1, f'(0)=f'(1)=0, f''(0)=f''(1)=0
             return value * value * value * (value * ((value * 6.0) - 15.0) + 10.0);
         }
 

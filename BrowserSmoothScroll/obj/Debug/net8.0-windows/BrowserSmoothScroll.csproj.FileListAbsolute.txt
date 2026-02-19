@@ -12,3 +12,4 @@ G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\r
 G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.pdb
 G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.genruntimeconfig.cache
 G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\ref\BrowserSmoothScroll.dll
+G:\Antigravity_Project\NoNamePJ04\BrowserSmoothScroll\obj\Debug\net8.0-windows\BrowserSmoothScroll.sourcelink.json
