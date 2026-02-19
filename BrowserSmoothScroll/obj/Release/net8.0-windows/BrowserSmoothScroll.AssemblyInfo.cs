@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BrowserSmoothScroll")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+28688b6421428532adc466e9b2a4252f951d749f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+96370f563ce8d1274f7c4f3eb9248e1ccac0d372")]
 [assembly: System.Reflection.AssemblyProductAttribute("BrowserSmoothScroll")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BrowserSmoothScroll")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

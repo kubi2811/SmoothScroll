@@ -8,7 +8,7 @@ internal sealed class AppSettings
     public bool AutoStartOnLogin { get; set; } = true;
     public bool EnableForAllAppsByDefault { get; set; } = true;
     public int StepSize { get; set; } = 120;
-    public int AnimationTimeMs { get; set; } = 500;
+    public int AnimationTimeMs { get; set; } = 550;
     public int AccelerationDeltaMs { get; set; } = 70;
     public int AccelerationMax { get; set; } = 7;
     public int TailToHeadRatio { get; set; } = 3;
