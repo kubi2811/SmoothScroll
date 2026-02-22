@@ -1,126 +1,144 @@
 /**
  * Browser Smooth Scroll - Content Script
- * Physics-based smooth scrolling to replace native browser scroll.
+ * Velocity-decay physics engine (matches the EXE feel).
  */
 
 const DEFAULT_SETTINGS = {
     enabled: true,
-    animationTimeMs: 500,
-    stepSize: 120,
+    animationTimeMs: 550,  // coast duration
+    stepSize: 120,         // pixels per scroll notch
     easing: true,
     shiftHorizontal: true,
 };
 
 let settings = { ...DEFAULT_SETTINGS };
 
-// Load settings from storage
-chrome.storage.sync.get(DEFAULT_SETTINGS, (stored) => {
-    settings = stored;
-});
-
-// Listen for settings changes from popup
+chrome.storage.sync.get(DEFAULT_SETTINGS, (s) => { settings = s; });
 chrome.storage.onChanged.addListener((changes) => {
-    for (const [key, { newValue }] of Object.entries(changes)) {
-        settings[key] = newValue;
-    }
+    for (const [k, { newValue }] of Object.entries(changes)) settings[k] = newValue;
 });
 
-// --- Smooth Scroll Engine ---
+// ---------------------------------------------------------------------------
+// Physics engine: velocity decay per requestAnimationFrame
+// ---------------------------------------------------------------------------
 
-const scrollState = new Map(); // element -> { targetX, targetY, currentX, currentY, animId }
+// Per-element scroll state (WeakMap so GC can clean up detached elements)
+const states = new WeakMap();
 
-function getScrollParent(el) {
+function getState(el) {
+    if (!states.has(el)) states.set(el, { vx: 0, vy: 0, rafId: null });
+    return states.get(el);
+}
+
+/**
+ * friction coefficient per frame.
+ * We want velocity to reach ~1% of original after `animationTimeMs` ms.
+ *   friction ^ (ms / 16.67) = 0.01
+ *   friction = 0.01 ^ (16.67 / ms)
+ */
+function friction() {
+    return Math.pow(0.01, 16.67 / Math.max(settings.animationTimeMs, 50));
+}
+
+function tick(el, state) {
+    const f = friction();
+    state.vx *= f;
+    state.vy *= f;
+
+    // Clamp to element scroll boundary
+    const maxX = el === document.documentElement
+        ? document.documentElement.scrollWidth - window.innerWidth
+        : el.scrollWidth - el.clientWidth;
+    const maxY = el === document.documentElement
+        ? document.documentElement.scrollHeight - window.innerHeight
+        : el.scrollHeight - el.clientHeight;
+
+    const newX = Math.max(0, Math.min(maxX, el.scrollLeft + state.vx));
+    const newY = Math.max(0, Math.min(maxY, el.scrollTop + state.vy));
+
+    // Stop if we hit boundary and velocity is pushing further
+    if ((newX === 0 || newX === maxX)) state.vx = 0;
+    if ((newY === 0 || newY === maxY)) state.vy = 0;
+
+    el.scrollLeft = newX;
+    el.scrollTop = newY;
+
+    if (Math.abs(state.vx) > 0.3 || Math.abs(state.vy) > 0.3) {
+        state.rafId = requestAnimationFrame(() => tick(el, state));
+    } else {
+        state.rafId = null;
+    }
+}
+
+function addVelocity(el, dvx, dvy) {
+    const state = getState(el);
+    const maxV = settings.stepSize * 5; // cap velocity
+    state.vx = Math.max(-maxV, Math.min(maxV, state.vx + dvx));
+    state.vy = Math.max(-maxV, Math.min(maxV, state.vy + dvy));
+    if (!state.rafId) state.rafId = requestAnimationFrame(() => tick(el, state));
+}
+
+// ---------------------------------------------------------------------------
+// Scroll target detection
+// ---------------------------------------------------------------------------
+
+function getScrollTarget(node) {
+    let el = node;
     while (el && el !== document.documentElement) {
-        const style = getComputedStyle(el);
-        const overflow = style.overflow + style.overflowY + style.overflowX;
-        if (/auto|scroll/.test(overflow)) return el;
+        const style = window.getComputedStyle(el);
+        const ov = style.overflow + style.overflowY + style.overflowX;
+        if (/auto|scroll/.test(ov)) {
+            if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth)
+                return el;
+        }
         el = el.parentElement;
     }
     return document.documentElement;
 }
 
-function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
+// ---------------------------------------------------------------------------
+// Normalize wheel delta across different devices / delta modes
+// ---------------------------------------------------------------------------
+const PIXELS_PER_LINE = 40;
+const PIXELS_PER_PAGE = 800;
+
+function normalizeDelta(e) {
+    let dx = e.deltaX;
+    let dy = e.deltaY;
+    if (e.deltaMode === 1) { dx *= PIXELS_PER_LINE; dy *= PIXELS_PER_LINE; }
+    if (e.deltaMode === 2) { dx *= PIXELS_PER_PAGE; dy *= PIXELS_PER_PAGE; }
+    return { dx, dy };
 }
 
-function smoothScrollElement(el, deltaX, deltaY) {
-    if (!scrollState.has(el)) {
-        scrollState.set(el, {
-            targetX: el.scrollLeft,
-            targetY: el.scrollTop,
-            startX: el.scrollLeft,
-            startY: el.scrollTop,
-            startTime: null,
-            animId: null,
-        });
-    }
-
-    const state = scrollState.get(el);
-
-    // Cancel previous animation
-    if (state.animId !== null) {
-        cancelAnimationFrame(state.animId);
-    }
-
-    // Accumulate scroll target
-    state.targetX = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, state.targetX + deltaX));
-    state.targetY = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, state.targetY + deltaY));
-    state.startX = el.scrollLeft;
-    state.startY = el.scrollTop;
-    state.startTime = null;
-
-    const duration = settings.animationTimeMs;
-
-    function step(timestamp) {
-        if (!state.startTime) state.startTime = timestamp;
-        const elapsed = timestamp - state.startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const easedProgress = settings.easing ? easeOutCubic(progress) : progress;
-
-        el.scrollLeft = state.startX + (state.targetX - state.startX) * easedProgress;
-        el.scrollTop = state.startY + (state.targetY - state.startY) * easedProgress;
-
-        if (progress < 1) {
-            state.animId = requestAnimationFrame(step);
-        } else {
-            state.animId = null;
-            scrollState.delete(el);
-        }
-    }
-
-    state.animId = requestAnimationFrame(step);
-}
-
-// --- Wheel Event Interception ---
+// ---------------------------------------------------------------------------
+// Wheel event listener
+// ---------------------------------------------------------------------------
 
 window.addEventListener('wheel', (e) => {
     if (!settings.enabled) return;
 
-    // Don't intercept on input/textarea/select
+    // Skip inside inputs
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
-    const target = getScrollParent(e.target);
+    const target = getScrollTarget(e.target);
     if (!target) return;
 
-    let deltaX = 0;
-    let deltaY = e.deltaY * (settings.stepSize / 100);
+    let { dx, dy } = normalizeDelta(e);
 
-    // Shift key = horizontal scroll
-    if (e.shiftKey && settings.shiftHorizontal) {
-        deltaX = deltaY;
-        deltaY = 0;
+    // Shift key → horizontal scroll
+    if (e.shiftKey && settings.shiftHorizontal && dy !== 0) {
+        dx = dy;
+        dy = 0;
     }
 
-    // Allow horizontal-only scroll wheels to pass through
-    if (e.deltaX !== 0 && e.deltaY === 0) return;
-
-    // Check if the element actually scrolls
-    const canScrollY = target.scrollHeight > target.clientHeight;
-    const canScrollX = target.scrollWidth > target.clientWidth;
-    if (!canScrollY && !canScrollX) return;
+    // Scale raw pixel delta to stepSize
+    // Typical mouse: 1 notch = 100px raw.  We want 1 notch = stepSize px velocity.
+    const scale = settings.stepSize / 100;
+    dx *= scale;
+    dy *= scale;
 
     e.preventDefault();
-    smoothScrollElement(target, deltaX, deltaY);
+    addVelocity(target, dx, dy);
 
 }, { passive: false, capture: true });
