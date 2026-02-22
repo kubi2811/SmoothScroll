@@ -5,8 +5,8 @@
 
 const DEFAULT_SETTINGS = {
     enabled: true,
-    animationTimeMs: 550,  // coast duration
-    stepSize: 120,         // pixels per scroll notch
+    animationTimeMs: 350,  // Reduced for snappier stops (less trôi)
+    stepSize: 100,         // Better default notch size for browser
     easing: true,
     shiftHorizontal: true,
 };
@@ -134,7 +134,8 @@ window.addEventListener('wheel', (e) => {
 
     // Scale raw pixel delta to stepSize
     // Typical mouse: 1 notch = 100px raw.  We want 1 notch = stepSize px velocity.
-    const scale = settings.stepSize / 100;
+    // UPDATE: Reduced impulse multiplier to 0.4 to prevent overly light scrolling.
+    const scale = (settings.stepSize / 100) * 0.4;
     dx *= scale;
     dy *= scale;
 
