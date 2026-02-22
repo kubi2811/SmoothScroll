@@ -179,28 +179,50 @@ function computeDurationMs(baseDurationMs, accelFactor) {
 
 // --- Scroll targeting ---
 function getScrollTarget(node) {
-    let el = node;
-    while (el && el !== document.documentElement) {
-        const style = window.getComputedStyle(el);
-        const ov = style.overflow + style.overflowY + style.overflowX;
-        if (/auto|scroll/.test(ov)) {
-            if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth)
-                return el;
+    try {
+        let el = node;
+        if (el && el.nodeType === 3) el = el.parentNode; // Handle text nodes
+
+        while (el && el !== document.documentElement && el !== document.body) {
+            if (el.nodeType === 1) { // Node.ELEMENT_NODE
+                const style = window.getComputedStyle(el);
+                const ov = style.overflow + style.overflowY + style.overflowX;
+                // Intercept standard scrollable styles
+                if (ov.includes('auto') || ov.includes('scroll') || ov.includes('overlay')) {
+                    if (el.scrollHeight > Math.ceil(el.clientHeight) || el.scrollWidth > Math.ceil(el.clientWidth)) {
+                        return el;
+                    }
+                }
+            }
+
+            let nextParent = el.parentElement || el.parentNode;
+
+            // Shadow DOM boundary crossing
+            if (!nextParent && el.getRootNode) {
+                let root = el.getRootNode();
+                if (root instanceof ShadowRoot) {
+                    nextParent = root.host;
+                }
+            }
+            el = nextParent;
         }
-        el = el.parentElement;
+    } catch (err) {
+        // Ignore cross-origin frame access errors
     }
-    return document.documentElement;
+    return document.scrollingElement || document.documentElement;
 }
 
 // --- Wheel interception ---
 window.addEventListener('wheel', (e) => {
     if (!settings.enabled) return;
 
-    const tag = document.activeElement?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    // Let native browser handle scrolling if hovering DIRECTLY over an input/textarea/iframe
+    // (We removed `document.activeElement` check because clicking FB Chat broke scrolling globally)
+    const hoverTag = e.target?.tagName;
+    if (hoverTag === 'INPUT' || hoverTag === 'TEXTAREA' || hoverTag === 'SELECT' || hoverTag === 'IFRAME') return;
 
     const target = getScrollTarget(e.target);
-    if (!target) return;
+    if (!target || target.tagName === 'IFRAME') return;
 
     let multiplier = 1;
     if (e.deltaMode === 1) multiplier = 40;
