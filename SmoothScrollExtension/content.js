@@ -1,12 +1,12 @@
 /**
  * Browser Smooth Scroll - Content Script
- * Velocity-decay physics engine (matches the EXE feel).
+ * Exact match of the C# EasingScrollMotion engine for 1:1 feel.
  */
 
 const DEFAULT_SETTINGS = {
     enabled: true,
-    animationTimeMs: 350,  // Reduced for snappier stops (less trôi)
-    stepSize: 100,         // Better default notch size for browser
+    animationTimeMs: 550,
+    stepSize: 120,
     easing: true,
     shiftHorizontal: true,
 };
@@ -18,69 +18,72 @@ chrome.storage.onChanged.addListener((changes) => {
     for (const [k, { newValue }] of Object.entries(changes)) settings[k] = newValue;
 });
 
-// ---------------------------------------------------------------------------
-// Physics engine: velocity decay per requestAnimationFrame
-// ---------------------------------------------------------------------------
+// --- Physics Engine (Matching C# EasingScrollMotion exactly) ---
 
-// Per-element scroll state (WeakMap so GC can clean up detached elements)
-const states = new WeakMap();
+const scrollState = new WeakMap();
 
-function getState(el) {
-    if (!states.has(el)) states.set(el, { vx: 0, vy: 0, rafId: null });
-    return states.get(el);
+// C# matches: EaseOutCirc / Cubic
+function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
 }
 
-/**
- * friction coefficient per frame.
- * We want velocity to reach ~1% of original after `animationTimeMs` ms.
- *   friction ^ (ms / 16.67) = 0.01
- *   friction = 0.01 ^ (16.67 / ms)
- */
-function friction() {
-    return Math.pow(0.01, 16.67 / Math.max(settings.animationTimeMs, 50));
-}
-
-function tick(el, state) {
-    const f = friction();
-    state.vx *= f;
-    state.vy *= f;
-
-    // Clamp to element scroll boundary
-    const maxX = el === document.documentElement
-        ? document.documentElement.scrollWidth - window.innerWidth
-        : el.scrollWidth - el.clientWidth;
-    const maxY = el === document.documentElement
-        ? document.documentElement.scrollHeight - window.innerHeight
-        : el.scrollHeight - el.clientHeight;
-
-    const newX = Math.max(0, Math.min(maxX, el.scrollLeft + state.vx));
-    const newY = Math.max(0, Math.min(maxY, el.scrollTop + state.vy));
-
-    // Stop if we hit boundary and velocity is pushing further
-    if ((newX === 0 || newX === maxX)) state.vx = 0;
-    if ((newY === 0 || newY === maxY)) state.vy = 0;
-
-    el.scrollLeft = newX;
-    el.scrollTop = newY;
-
-    if (Math.abs(state.vx) > 0.3 || Math.abs(state.vy) > 0.3) {
-        state.rafId = requestAnimationFrame(() => tick(el, state));
-    } else {
-        state.rafId = null;
+// C# matches: EasingScrollMotion parameters
+function smoothScrollElement(el, rawDeltaX, rawDeltaY) {
+    if (!scrollState.has(el)) {
+        scrollState.set(el, {
+            startX: el.scrollLeft,
+            startY: el.scrollTop,
+            targetX: el.scrollLeft,
+            targetY: el.scrollTop,
+            startTime: 0,
+            animId: null
+        });
     }
+
+    const state = scrollState.get(el);
+
+    // If already scrolling, update target from current TARGET, not current position
+    // This causes the "Coasting" momentum feel from the EXE
+    state.targetX += rawDeltaX;
+    state.targetY += rawDeltaY;
+
+    // Clamp targets
+    const maxX = el === document.documentElement ? document.documentElement.scrollWidth - window.innerWidth : el.scrollWidth - el.clientWidth;
+    const maxY = el === document.documentElement ? document.documentElement.scrollHeight - window.innerHeight : el.scrollHeight - el.clientHeight;
+
+    state.targetX = Math.max(0, Math.min(maxX, state.targetX));
+    state.targetY = Math.max(0, Math.min(maxY, state.targetY));
+
+    // Reset animation start
+    state.startX = el.scrollLeft;
+    state.startY = el.scrollTop;
+    state.startTime = performance.now();
+
+    function tick(now) {
+        let elapsed = now - state.startTime;
+        let progress = Math.min(elapsed / settings.animationTimeMs, 1);
+
+        let eased = settings.easing ? easeOutCubic(progress) : progress;
+
+        let nextX = state.startX + (state.targetX - state.startX) * eased;
+        let nextY = state.startY + (state.targetY - state.startY) * eased;
+
+        el.scrollLeft = nextX;
+        el.scrollTop = nextY;
+
+        if (progress < 1) {
+            state.animId = requestAnimationFrame(tick);
+        } else {
+            state.animId = null;
+            scrollState.delete(el); // Clean up when done
+        }
+    }
+
+    if (state.animId) cancelAnimationFrame(state.animId);
+    state.animId = requestAnimationFrame(tick);
 }
 
-function addVelocity(el, dvx, dvy) {
-    const state = getState(el);
-    const maxV = settings.stepSize * 5; // cap velocity
-    state.vx = Math.max(-maxV, Math.min(maxV, state.vx + dvx));
-    state.vy = Math.max(-maxV, Math.min(maxV, state.vy + dvy));
-    if (!state.rafId) state.rafId = requestAnimationFrame(() => tick(el, state));
-}
-
-// ---------------------------------------------------------------------------
-// Scroll target detection
-// ---------------------------------------------------------------------------
+// --- Scroll targeting ---
 
 function getScrollTarget(node) {
     let el = node;
@@ -96,50 +99,40 @@ function getScrollTarget(node) {
     return document.documentElement;
 }
 
-// ---------------------------------------------------------------------------
-// Normalize wheel delta across different devices / delta modes
-// ---------------------------------------------------------------------------
-const PIXELS_PER_LINE = 40;
-const PIXELS_PER_PAGE = 800;
-
-function normalizeDelta(e) {
-    let dx = e.deltaX;
-    let dy = e.deltaY;
-    if (e.deltaMode === 1) { dx *= PIXELS_PER_LINE; dy *= PIXELS_PER_LINE; }
-    if (e.deltaMode === 2) { dx *= PIXELS_PER_PAGE; dy *= PIXELS_PER_PAGE; }
-    return { dx, dy };
-}
-
-// ---------------------------------------------------------------------------
-// Wheel event listener
-// ---------------------------------------------------------------------------
+// --- Wheel interception ---
 
 window.addEventListener('wheel', (e) => {
     if (!settings.enabled) return;
 
-    // Skip inside inputs
     const tag = document.activeElement?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
     const target = getScrollTarget(e.target);
     if (!target) return;
 
-    let { dx, dy } = normalizeDelta(e);
+    // Base 120px is standard Windows wheel notch behavior
+    // Normalize delta Mode
+    let multiplier = 1;
+    if (e.deltaMode === 1) multiplier = 40; // LINE
+    if (e.deltaMode === 2) multiplier = 800; // PAGE
 
-    // Shift key → horizontal scroll
+    let dx = e.deltaX * multiplier;
+    let dy = e.deltaY * multiplier;
+
+    // Scale by user stepSize setting
+    const scale = settings.stepSize / 120;
+    dx *= scale;
+    dy *= scale;
+
     if (e.shiftKey && settings.shiftHorizontal && dy !== 0) {
         dx = dy;
         dy = 0;
     }
 
-    // Scale raw pixel delta to stepSize
-    // Typical mouse: 1 notch = 100px raw.  We want 1 notch = stepSize px velocity.
-    // UPDATE: Reduced impulse multiplier to 0.4 to prevent overly light scrolling.
-    const scale = (settings.stepSize / 100) * 0.4;
-    dx *= scale;
-    dy *= scale;
+    // Allow native trackpad horizontal to pass through
+    if (dx !== 0 && dy === 0 && !e.shiftKey) return;
 
     e.preventDefault();
-    addVelocity(target, dx, dy);
+    smoothScrollElement(target, dx, dy);
 
 }, { passive: false, capture: true });
