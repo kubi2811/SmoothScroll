@@ -151,36 +151,30 @@ function processFrame(el, state, now) {
     }
 }
 
-function queueImpulse(el, targetDelta, horizontal) {
-    if (Math.abs(targetDelta) < 0.01) return;
+// --- Acceleration Math (from SmoothScrollService) ---
+const AccelerationStrength = 1.20;
+const CadenceBoostStrength = 0.55;
+const MaxAccelerationMultiplier = 3.50;
+const AccelerationDeltaMs = 120; // Default from AppSettings
+const AccelerationMax = 12;
 
-    let state = getScrollState(el);
-    let now = performance.now();
-    let dir = Math.sign(targetDelta);
+function computeAcceleration(combo, elapsedMs) {
+    let safeWindow = Math.max(1, AccelerationDeltaMs);
+    let clampedElapsed = Math.max(0, Math.min(elapsedMs, safeWindow));
+    let cadenceRatio = 1.0 - (clampedElapsed / safeWindow);
+    let comboRatio = combo / Math.max(1, AccelerationMax);
+    let comboBoost = Math.pow(Math.max(0.0, Math.min(comboRatio, 1.0)), 0.45) * AccelerationStrength;
+    let cadenceBoost = cadenceRatio * CadenceBoostStrength;
+    let factor = Math.max(1.0, Math.min(1.0 + comboBoost + cadenceBoost, MaxAccelerationMultiplier));
+    return factor;
+}
 
-    state.lastHorizontal = horizontal;
-    state.lastDirection = dir;
-    state.lastInputMs = now;
-
-    let durationMs = settings.animationTimeMs;
-    let impulse = new ScrollImpulse(targetDelta, durationMs, settings.easing);
-
-    let coastKick = (targetDelta / Math.max(1.0, durationMs)) * 1000.0 * CoastKickGain;
-    let seedRate = (Math.abs(targetDelta) / Math.max(1.0, durationMs)) * 1000.0;
-
-    state.impulses.push(impulse);
-
-    let currentCoast = state.coastVelocity;
-    currentCoast = Math.max(-CoastMaxVelocity, Math.min(CoastMaxVelocity, currentCoast + coastKick));
-    state.coastVelocity = currentCoast;
-
-    state.releaseSeedRate = Math.max(0, Math.min(CoastMaxVelocity, (state.releaseSeedRate * 0.45) + (seedRate * 0.55)));
-    state.releaseSeedPending = true;
-
-    if (!state.animId) {
-        state.lastAnimTime = now;
-        state.animId = requestAnimationFrame((n) => processFrame(el, state, n));
-    }
+function computeDurationMs(baseDurationMs, accelFactor) {
+    let normalizedBase = Math.max(40, Math.min(baseDurationMs, 2000));
+    let accelerationImpact = Math.max(0.0, accelFactor - 1.0);
+    let shortenRatio = Math.min(0.45, accelerationImpact * 0.11);
+    let scaled = normalizedBase * (1.0 - shortenRatio);
+    return Math.max(80, Math.round(scaled));
 }
 
 // --- Scroll targeting ---
@@ -230,6 +224,51 @@ window.addEventListener('wheel', (e) => {
     if (dx !== 0 && dy === 0 && !e.shiftKey) return;
 
     e.preventDefault();
-    queueImpulse(target, targetDelta, horizontal);
+
+    let state = getScrollState(target);
+    let now = performance.now();
+    let dir = Math.sign(targetDelta);
+
+    // Apply Acceleration
+    let isAccDirectionSame = state.lastAccDirection === dir;
+    let elapsedSinceInput = state.lastInputMs === -99999 ? 999999 : now - state.lastInputMs;
+
+    if (!isAccDirectionSame) state.combo = 0;
+
+    if (elapsedSinceInput <= AccelerationDeltaMs) {
+        state.combo = Math.min((state.combo || 0) + 1, AccelerationMax);
+    } else {
+        state.combo = 0;
+    }
+
+    state.lastAccDirection = dir;
+    let accelFactor = computeAcceleration(state.combo, elapsedSinceInput);
+    let acceleratedTargetDelta = targetDelta * accelFactor;
+    let acceleratedDurationMs = computeDurationMs(settings.animationTimeMs, accelFactor);
+
+    if (Math.abs(acceleratedTargetDelta) < 0.01) return;
+
+    state.lastHorizontal = horizontal;
+    state.lastDirection = dir;
+    state.lastInputMs = now;
+
+    let impulse = new ScrollImpulse(acceleratedTargetDelta, acceleratedDurationMs, settings.easing);
+
+    let coastKick = (acceleratedTargetDelta / Math.max(1.0, acceleratedDurationMs)) * 1000.0 * CoastKickGain;
+    let seedRate = (Math.abs(acceleratedTargetDelta) / Math.max(1.0, acceleratedDurationMs)) * 1000.0;
+
+    state.impulses.push(impulse);
+
+    let currentCoast = state.coastVelocity;
+    currentCoast = Math.max(-CoastMaxVelocity, Math.min(CoastMaxVelocity, currentCoast + coastKick));
+    state.coastVelocity = currentCoast;
+
+    state.releaseSeedRate = Math.max(0, Math.min(CoastMaxVelocity, (state.releaseSeedRate * 0.45) + (seedRate * 0.55)));
+    state.releaseSeedPending = true;
+
+    if (!state.animId) {
+        state.lastAnimTime = now;
+        state.animId = requestAnimationFrame((n) => processFrame(target, state, n));
+    }
 
 }, { passive: false, capture: true });
