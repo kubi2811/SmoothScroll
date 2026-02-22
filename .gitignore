@@ -10,3 +10,10 @@
 
 # Logs
 *.log
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.zip
