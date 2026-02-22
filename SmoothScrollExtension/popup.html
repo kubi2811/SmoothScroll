@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browser Smooth Scroll</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <img src="icons/icon48.png" width="28" height="28" alt="logo" />
+    <div class="header-text">
+      <span class="title">Smooth Scroll</span>
+      <span class="version">v1.0</span>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="enabled" />
+      <span class="slider"></span>
+    </label>
+  </header>
+
+  <main>
+    <div class="row">
+      <label>Animation Speed</label>
+      <div class="value-row">
+        <input type="range" id="animationTimeMs" min="100" max="1500" step="50" />
+        <span class="val" id="animationTimeMsVal">500</span><span class="unit">ms</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <label>Scroll Step</label>
+      <div class="value-row">
+        <input type="range" id="stepSize" min="40" max="400" step="20" />
+        <span class="val" id="stepSizeVal">120</span><span class="unit">px</span>
+      </div>
+    </div>
+
+    <div class="row toggle-row">
+      <label>Easing animation</label>
+      <label class="toggle">
+        <input type="checkbox" id="easing" />
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="row toggle-row">
+      <label>Shift key → horizontal scroll</label>
+      <label class="toggle">
+        <input type="checkbox" id="shiftHorizontal" />
+        <span class="slider"></span>
+      </label>
+    </div>
+  </main>
+
+  <footer>
+    <span class="tip">💡 Disable browser native smooth scroll in <code>chrome://flags/#smooth-scrolling</code></span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
