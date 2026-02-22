@@ -1,0 +1,41 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish (Framework-Dependent Single File)
+        run: |
+          dotnet publish BrowserSmoothScroll/BrowserSmoothScroll.csproj `
+            -c Release -r win-x64 `
+            --self-contained false `
+            -p:PublishSingleFile=true `
+            -o publish/out
+
+      - name: Zip artifact
+        run: Compress-Archive -Path publish/out/BrowserSmoothScroll.exe -DestinationPath publish/BrowserSmoothScroll_${{ github.ref_name }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: publish/BrowserSmoothScroll_${{ github.ref_name }}.zip
+          body: |
+            ### Requirements
+            - Windows 10/11 (64-bit)
+            - [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
+
+            ### Install
+            Download the zip, extract, run `BrowserSmoothScroll.exe`.
