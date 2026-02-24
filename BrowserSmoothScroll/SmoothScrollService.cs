@@ -211,6 +211,18 @@ internal sealed class SmoothScrollService : IDisposable
             return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
         }
 
+        // CTRL+Wheel is universally used for zoom (PDFs, browsers, etc.)
+        // Pass through without interception to prevent amplified zoom.
+        if (IsCtrlPressed())
+        {
+            if (settings.DebugMode)
+            {
+                _debugLogger.LogSkippedWheel("ctrl-zoom-passthrough", pid, rawDelta);
+            }
+
+            return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
+        }
+
         var horizontal = horizontalFromMessage;
         if (!horizontalFromMessage && settings.ShiftKeyHorizontalScrolling && IsShiftPressed())
         {
@@ -241,6 +253,11 @@ internal sealed class SmoothScrollService : IDisposable
     private static bool IsShiftPressed()
     {
         return (NativeMethods.GetKeyState(NativeMethods.VK_SHIFT) & 0x8000) != 0;
+    }
+
+    private static bool IsCtrlPressed()
+    {
+        return (NativeMethods.GetKeyState(NativeMethods.VK_CONTROL) & 0x8000) != 0;
     }
 
     private void QueueImpulse(int rawDelta, bool horizontal, AppSettings settings)

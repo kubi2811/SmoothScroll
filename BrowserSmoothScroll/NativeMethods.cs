@@ -9,6 +9,7 @@ internal static class NativeMethods
     public const int WM_MOUSEWHEEL = 0x020A;
     public const int WM_MOUSEHWHEEL = 0x020E;
     public const int VK_SHIFT = 0x10;
+    public const int VK_CONTROL = 0x11;
     public const uint LLMHF_INJECTED = 0x00000001;
     public const uint INPUT_MOUSE = 0;
     public const uint MOUSEEVENTF_WHEEL = 0x0800;
