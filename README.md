@@ -15,7 +15,7 @@
 
 > **Necessary**: Disable "Smooth Scrolling" in your browser (`chrome://flags/#smooth-scrolling` or `edge://flags/#smooth-scrolling`) to avoid double-smoothing.
 
-1. **Download** the latest `BrowserSmoothScroll_v1.0.zip` from the [Releases](https://github.com/kubi2811/SmoothScroll/releases) page.
+1. **Download** the latest `BrowserSmoothScroll_v1.1.zip` from the [Releases](https://github.com/kubi2811/SmoothScroll/releases) page.
 2. **Extract** the zip file.
 3. **Run** `BrowserSmoothScroll.exe`.
 4. The app runs in the **System Tray** (near the clock).

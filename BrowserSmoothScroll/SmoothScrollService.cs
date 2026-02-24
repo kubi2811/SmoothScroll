@@ -211,8 +211,9 @@ internal sealed class SmoothScrollService : IDisposable
             return NativeMethods.CallNextHookEx(_hookHandle, nCode, wParam, lParam);
         }
 
-        // CTRL+Wheel is universally used for zoom (PDFs, browsers, etc.)
-        // Pass through without interception to prevent amplified zoom.
+        // CTRL+Wheel = zoom (PDFs, browsers, etc.)
+        // Pass through unmodified — zoom is discrete (each notch = one zoom step),
+        // so splitting into sub-events would cause massive over-zoom.
         if (IsCtrlPressed())
         {
             if (settings.DebugMode)

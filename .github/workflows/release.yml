@@ -41,6 +41,9 @@ jobs:
 
             > ✅ This build was compiled automatically by GitHub Actions — fully transparent and verifiable.
 
+            ### What's New
+            - 🔧 Fixed: CTRL+Scroll zoom in PDF files no longer causes excessive zoom (50-100x amplification). Zoom now passes through natively for correct behavior.
+
             ### Requirements
             - Windows 10/11 (64-bit)
             - [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) *(free, one-time install)*
