@@ -5,8 +5,8 @@
 
 const DEFAULT_SETTINGS = {
     enabled: true,
-    animationTimeMs: 350,
-    stepSize: 100,
+    animationTimeMs: 550,
+    stepSize: 120,
     easing: true,
     shiftHorizontal: true,
 };
@@ -215,9 +215,9 @@ function getScrollTarget(node) {
 // --- Wheel interception ---
 window.addEventListener('wheel', (e) => {
     if (!settings.enabled) return;
+    if (e.ctrlKey || e.metaKey) return; // Let native browser handle Ctrl+Scroll zoom
 
     // Let native browser handle scrolling if hovering DIRECTLY over an input/textarea/iframe
-    // (We removed `document.activeElement` check because clicking FB Chat broke scrolling globally)
     const hoverTag = e.target?.tagName;
     if (hoverTag === 'INPUT' || hoverTag === 'TEXTAREA' || hoverTag === 'SELECT' || hoverTag === 'IFRAME') return;
 

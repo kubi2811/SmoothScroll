@@ -1,7 +1,7 @@
 const DEFAULTS = {
     enabled: true,
-    animationTimeMs: 350,
-    stepSize: 100,
+    animationTimeMs: 550,
+    stepSize: 120,
     easing: true,
     shiftHorizontal: true,
 };

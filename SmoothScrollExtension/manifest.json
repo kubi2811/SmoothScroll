@@ -1,13 +1,26 @@
 {
   "manifest_version": 3,
   "name": "Browser Smooth Scroll",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Buttery smooth scrolling for your browser. Replaces the default scroll with a fluid, physics-based animation.",
-  "permissions": ["storage"],
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start"
     }
   ],

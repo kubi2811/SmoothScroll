@@ -25,6 +25,7 @@ header {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .title {
@@ -34,8 +35,14 @@ header {
 }
 
 .version {
-  font-size: 11px;
-  color: #7c7caa;
+  font-size: 10px;
+  color: #c8c8f0;
+  background: rgba(108, 99, 255, 0.25);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  width: fit-content;
 }
 
 main {
@@ -161,13 +168,52 @@ footer {
   border-top: 1px solid #232340;
 }
 
-.tip {
-  font-size: 11px;
-  color: #7c7caa;
-  line-height: 1.5;
+.tip-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 193, 7, 0.08);
+  border: 1px solid rgba(255, 193, 7, 0.35);
+  border-radius: 8px;
 }
 
-.tip code {
-  color: #8b8bcc;
-  font-size: 10px;
+.tip-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.tip-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tip-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffc107;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.tip-text {
+  font-size: 11px;
+  color: #c8c8e0;
+  line-height: 1.4;
+}
+
+.tip-link {
+  font-size: 10.5px;
+  color: #8b8bff;
+  background: rgba(108, 99, 255, 0.12);
+  padding: 3px 6px;
+  border-radius: 4px;
+  margin-top: 3px;
+  display: inline-block;
+  word-break: break-all;
+  cursor: pointer;
+  user-select: all;
 }
