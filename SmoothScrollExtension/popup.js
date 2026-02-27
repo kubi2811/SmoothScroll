@@ -46,3 +46,8 @@ document.querySelectorAll('input').forEach((el) => {
     el.addEventListener('input', save);
     el.addEventListener('change', save);
 });
+
+// Open chrome://flags when clicking the tip link
+$('openFlags').addEventListener('click', () => {
+    chrome.tabs.create({ url: 'chrome://flags/#smooth-scrolling' });
+});

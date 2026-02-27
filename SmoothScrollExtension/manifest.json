@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Browser Smooth Scroll",
   "version": "1.1",
-  "description": "Buttery smooth scrolling for your browser. Replaces the default scroll with a fluid, physics-based animation.",
+  "description": "Basically FREE - lightweight extention for smooth scrolling in web browsers",
   "permissions": [
     "storage",
     "scripting"
