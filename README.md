@@ -5,6 +5,7 @@
 - A lightweight utility for buttery smooth scrolling in web browsers on Windows.
 - Created on: 02/20/2026
 - Youtube link Demo: https://youtu.be/F5LCaOcKkQQ
+- Link Extention (but local app better): https://chromewebstore.google.com/detail/hehlajelkodjocdmpenpgamgbejcbheo?utm_source=item-share-cb
 
 ## Requirements
 
